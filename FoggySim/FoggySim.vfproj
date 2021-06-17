@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectCreator="Intel Fortran" Keyword="Console Application" Version="11.0" ProjectIdGuid="{CD56EB0C-C54F-4060-8014-F5F17F076466}">
+	<Platforms>
+		<Platform Name="Win32"/>
+		<Platform Name="x64"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" AdditionalIncludeDirectories="$(SolutionDir)\libmath\Debug" WarnInterfaces="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\libmath\Debug" GenerateDebugInformation="true" SubSystem="subSystemConsole" AdditionalDependencies="libmath.dll"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|Win32">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" RuntimeLibrary="rtMultiThreadedDLL"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Debug|x64">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="$(SolutionDir)\libtoolbox\x64\Debug;$(SolutionDir)\libmath\x64\Debug;$(SolutionDir)\libmath_generated_functions\x64\Debug;$(SolutionDir)\libmath_external\x64\Debug;$(SolutionDir)\libtree\x64\Debug;$(SolutionDir)\libmlfmm\x64\Debug" WarnInterfaces="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\libtoolbox\x64\Debug;$(SolutionDir)\libmath\x64\Debug;$(SolutionDir)\libmath_generated_functions\x64\Debug;$(SolutionDir)\libmath_external\x64\Debug;$(SolutionDir)\libtree\x64\Debug;$(SolutionDir)\libmlfmm\x64\Debug" GenerateDebugInformation="true" SubSystem="subSystemConsole" StackReserveSize="100000000" AdditionalDependencies="libmath.lib libmath_external.lib libmath_external.lib libmath_generated_functions.lib libtoolbox.lib libtree.lib libmlfmm.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|x64">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" RuntimeLibrary="rtMultiThreadedDLL"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd;h;inc"/>
+		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<Filter Name="src">
+		<Filter Name="lib">
+		<Filter Name="field">
+		<File RelativePath=".\src\lib\field\lib_field.f90"/>
+		<File RelativePath=".\src\lib\field\lib_field_gaussian_beam.f90"/>
+		<File RelativePath=".\src\lib\field\lib_field_plane_wave.f90"/>
+		<File RelativePath=".\src\lib\field\lib_field_polarisation.f90"/>
+		<File RelativePath=".\src\lib\field\lib_field_polarisation_type.f90"/>
+		<File RelativePath=".\src\lib\field\lib_field_polarisation_type_operator.f90"/></Filter>
+		<Filter Name="light_scattering_by_particles">
+		<File RelativePath=".\src\lib\light_scattering_by_particles\light_scattering.f90"/></Filter>
+		<Filter Name="mie_theory">
+		<File RelativePath=".\src\lib\mie_theory\lib_mie.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_mie_illumination.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_mie_ms_data_container.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_mie_ms_ml_fmm_interface.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_mie_ms_solver_interface.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_mie_ms_solver_interface_helper_functions.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_mie_multi_sphere.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_mie_single_sphere.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_mie_ss_helper_functions.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_mie_type.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_mie_type_functions.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
+		<File RelativePath=".\src\lib\mie_theory\lib_solver_GMRES.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File></Filter>
+		<Filter Name="scene">
+		<File RelativePath=".\src\lib\scene\lib_scene.f90"/>
+		<File RelativePath=".\src\lib\scene\lib_scene_generator.f90"/>
+		<File RelativePath=".\src\lib\scene\lib_scene_type.f90"/></Filter></Filter>
+		<File RelativePath=".\src\main.f90"/></Filter></Filter></Files>
+	<Globals/></VisualStudioProject>

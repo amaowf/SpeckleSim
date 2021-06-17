@@ -1,0 +1,12 @@
+P3
+    10      3
+255
+# The part above is the header
+# P3   means this is a RGB color image in ASCII
+#     10 x      3  is the width and height of the image in pixels
+# pixel value range for each color: 0 - 255
+# data point value range:         -7.00E+00 -          7.00E+00
+# The part below is image data: RGB triplets
+255 255 255 255 255 255 255 255 255 255 170 170 255 121 121 255  85  85 255  58  58 255  36  36 255  17  17 255   0   0
+255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255
+  0   0 255  17  17 255  36  36 255  58  58 255  85  85 255 121 121 255 170 170 255 255 255 255 255 255 255 255 255 255

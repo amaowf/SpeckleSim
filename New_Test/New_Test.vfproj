@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectCreator="Intel Fortran" Keyword="Console Application" Version="11.0" ProjectIdGuid="{3111C3F5-A0F0-4910-81F5-904BA8111038}">
+	<Platforms>
+		<Platform Name="Win32"/>
+		<Platform Name="x64"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" AdditionalIncludeDirectories="$(SolutionDir)\libmath\x64\Debug" WarnInterfaces="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL" UseMkl="mklParallel"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\libmath\x64\Debug" GenerateDebugInformation="true" SubSystem="subSystemConsole" AdditionalDependencies="libmath.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|Win32">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" RuntimeLibrary="rtMultiThreadedDLL"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Debug|x64">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" MultiProcessorCompilation="true" Optimization="optimizeDisabled" Parallelization="true" HeapArrays="0" Preprocess="preprocessYes" AdditionalIncludeDirectories="$(SolutionDir)\libtoolbox\x64\Debug;$(SolutionDir)\libmath\x64\Debug;$(SolutionDir)\libmath_generated_functions\x64\Debug;$(SolutionDir)\libmath_external\x64\Debug;$(SolutionDir)\libtree\x64\Debug;$(SolutionDir)\libmlfmm\x64\Debug" OpenMP="OpenMPParallelCode" WarnDeclarations="true" WarnUnusedVariables="true" WarnShape="true" WarnInterfaces="true" Traceback="true" NullPointerCheck="true" BoundsCheck="true" ArrayShapeCheck="true" UninitializedVariablesCheck="true" DescriptorDataTypeCheck="true" DescriptorDataSizeCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL" UseMkl="mklParallel"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\libtoolbox\x64\Debug;$(SolutionDir)\libmath\x64\Debug;$(SolutionDir)\libmath_generated_functions\x64\Debug;$(SolutionDir)\libmath_external\x64\Debug;$(SolutionDir)\libtree\x64\Debug;$(SolutionDir)\libmlfmm\x64\Debug" GenerateDebugInformation="true" SubSystem="subSystemConsole" StackReserveSize="100000000" AdditionalDependencies="libtree.lib libmlfmm.lib libmath.lib libtoolbox.lib libmath_external.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|x64">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" MultiProcessorCompilation="true" NullPointerCheck="true" BoundsCheck="true" ArrayShapeCheck="true" UninitializedVariablesCheck="true" DescriptorDataTypeCheck="true" DescriptorDataSizeCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDLL"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole" AdditionalDependencies="libtree.lib libmlfmm.lib libmath.lib libtoolbox.lib libmath_external.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd"/>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<Filter Name="config"/>
+		<Filter Name="speckle_common">
+		<File RelativePath=".\lib_sie_constants.f90"/>
+		<File RelativePath=".\lib_sie_data_container.f90"/>
+		<File RelativePath=".\lib_sie_integration_points.f90"/>
+		<File RelativePath=".\lib_sie_lookup_table.f90"/>
+		<File RelativePath=".\lib_sie_math.f90"/>
+		<File RelativePath=".\lib_sie_mlfmm.f90"/>
+		<File RelativePath=".\lib_sie_solver_gmres_interface.f90"/>
+		<File RelativePath=".\lib_sie_type_function.f90"/>
+		<File RelativePath=".\Time_Stamp.f90"/></Filter>
+		<Filter Name="speckle_quad">
+		<File RelativePath=".\lib_sie_quad_calculation_mod.f90"/>
+		<File RelativePath=".\lib_sie_quad_data_container.f90"/>
+		<File RelativePath=".\lib_sie_quad_singularity.f90"/>
+		<File RelativePath=".\lib_sie_quad_solver_normal.f90"/></Filter>
+		<Filter Name="speckle_tri">
+		<File RelativePath=".\Gauss_Quadrature_Fast.f90"/>
+		<File RelativePath=".\lib_sie_tri_calculation_mod.f90"/>
+		<File RelativePath=".\lib_sie_tri_data_container.f90"/>
+		<File RelativePath=".\lib_sie_tri_mlfmm.f90"/>
+		<File RelativePath=".\lib_sie_tri_mlfmm_interface.f90"/>
+		<File RelativePath=".\lib_sie_tri_solver_normal.f90"/>
+		<File RelativePath=".\main_tri.f90"/></Filter></Filter>
+		<File RelativePath=".\ReadMe.txt"/></Files>
+	<Globals/></VisualStudioProject>
