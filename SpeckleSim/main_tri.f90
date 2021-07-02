@@ -46,7 +46,7 @@ program main_tri
 		
 		!When Gaussian beam
 		if (calc_p(1) .eq. 2) then
-			beam_waist = 1.5e-6 !waist radius
+			beam_waist = 3.0e-6 !waist radius
 		end if
 		
 		!calc_p(2) : calculation type
@@ -68,7 +68,7 @@ program main_tri
 		!4- 'rcs_n',radar cross section n-polarization 
 		!5- 'rcs_p', radar cross section p-polarization 
 		!6- 'BRDF', bidirectional refelction distribution function
-		calc_p(4) = 5
+		calc_p(4) = 1
 		
 		!calc_p(5) : object type
 		!1- 'sphere'
@@ -77,14 +77,14 @@ program main_tri
 		calc_p(5) = 2
 		
 		if (calc_p(5) .eq. 2)then
-			surface_length = 4.0e-6	
+			surface_length = 5.0e-6	
 		end if
 		
 		!calc_p(6) : field evaluation
 		!1- surface current or field
 		!2- observation field
 		!3- both are calculated subsequently	
-		calc_p(6) = 2
+		calc_p(6) = 3
 		
 		!Relative permittivity of the surface (object)
 		!environment is air
@@ -162,7 +162,7 @@ program main_tri
 				file_start_n = 1
 			else
 				write(*,*) 'Give the start-number of files'
-				read(*,'(I3.3)') file_start_n			
+				read(*,'(I3.3)') file_start_n		
 			end if
 			
 			print*, '                           '			
@@ -189,7 +189,7 @@ program main_tri
 			print*, '                                       '	
 			print*, 'Normal calculation using triangular elements'
 			print*, '--------------------------------------------'			
-			if (file_n .gt. 1) then
+			if (file_n .ge. 1) then
 				do m = file_start_n, file_n+file_start_n
 					print*, 'The index of the file is', m
 					call name_outputfile_multiple(m)
