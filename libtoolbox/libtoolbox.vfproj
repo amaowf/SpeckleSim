@@ -45,10 +45,18 @@
 		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
 		<Filter Name="src">
+		<Filter Name="colour">
+		<File RelativePath=".\src\colour\lib_colour.f90"/>
+		<File RelativePath=".\src\colour\lib_colour_type.f90"/></Filter>
+		<Filter Name="image">
+		<File RelativePath=".\src\image\lib_image.f90"/>
+		<File RelativePath=".\src\image\lib_image_public.f90"/>
+		<File RelativePath=".\src\image\lib_image_type.f90"/>
+		<File RelativePath=".\src\image\lib_image_type_operator.f90"/></Filter>
 		<File RelativePath=".\src\file_io.f90"/>
+		<File RelativePath=".\src\file_io_obj.f90"/>
 		<File RelativePath=".\src\lib_constants.f90"/>
 		<File RelativePath=".\src\lib_data_types.f90"/>
-		<File RelativePath=".\src\lib_hash_function.f90"/>
 		<File RelativePath=".\src\lib_sort.f90"/>
 		<File RelativePath=".\src\toolbox.f90"/></Filter></Filter></Files>
 	<Globals/></VisualStudioProject>

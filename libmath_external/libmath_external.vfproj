@@ -129,5 +129,6 @@
 		<File RelativePath=".\src\fsu\fsu_special_functions.f90"/>
 		<File RelativePath=".\src\fsu\fsu_test_values.f90"/></Filter>
 		<Filter Name="gouesbet">
-		<File RelativePath=".\src\Gouesbet\gnm_mod.f90"/></Filter></Filter></Filter></Files>
+		<File RelativePath=".\src\Gouesbet\gnm_mod.f90"/></Filter>
+		<File RelativePath=".\src\lib_hash_function.f90"/></Filter></Filter></Files>
 	<Globals/></VisualStudioProject>

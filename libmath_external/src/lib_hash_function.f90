@@ -15,14 +15,14 @@ module lib_hash_function
         module procedure hash_fnv1a32_2_byte
         module procedure hash_fnv1a32_4_byte
         module procedure hash_fnv1a32_8_byte
-#ifdef __GFORTRAN__
-        module procedure hash_fnv1a32_16_byte
-#endif
+!#ifdef __GFORTRAN__
+!        module procedure hash_fnv1a32_16_byte
+!#endif
         module procedure hash_fnv1a64_4_byte
         module procedure hash_fnv1a64_8_byte
-#ifdef __GFORTRAN__
-        module procedure hash_fnv1a64_16_byte
-#endif
+!#ifdef __GFORTRAN__
+!        module procedure hash_fnv1a64_16_byte
+!#endif
     end interface
 
     contains
@@ -369,58 +369,58 @@ module lib_hash_function
 
     end function hash_fnv1a32_8_byte
 
-#ifdef __GFORTRAN__
-    ! fnv1a hash function
-    !
-    ! Arguments
-    ! ----
-    !   buffer: integer(kind=16)
-    !       data to be hashed
-    !   max_value: integer(kind=4)
-    !       maximum value of the hash
-    !
-    ! Returns
-    ! ----
-    !   a 32-bit hash value
-    !
-    function hash_fnv1a32_16_byte(buffer, max_value) result(hash)
-        implicit none
-        ! dummy
-        integer(kind=16), intent(in) :: buffer
-        integer(kind=4) :: max_value
-        integer(kind=4) :: hash
-
-        ! auxiliary
-        double precision :: buffer_hash
-        integer(kind=16) :: buffer_buffer
-        integer(kind=1), dimension(16) :: buffer_list
-
-        equivalence (buffer_buffer, buffer_list)
-
-        buffer_buffer = buffer
-
-        hash = -2128831035
-        call FNV32(buffer_list, size(buffer_list), hash)
-
-!        hash = int(real(hash,8) /  4294967296.0D0 * int(max_value-1,8) + max_value/2,4)
-
-        !        <--     hash     -->
-        !       |--------------------|
-        !    -2**31               2**31-1        <-- integer(kind=8)
-        !     -0.5                  0.5          <-- if hash < 0: / 2.0D0**32; else / (2*(2**31-1))
-        ! -max_value/2+1        max_value/2-1    <-- * (max_value-2)
-        !      1                  max_value      <-- + max_value / 2
-        if (hash .lt. 0) then
-            buffer_hash = real(hash,8) / 2.0D0**32
-        else if (hash .gt. 0) then
-            buffer_hash = real(hash,8) / (2.0D0**31 - 1.0D0) / 2.0D0
-        else
-            buffer_hash = 0.0D0
-        end if
-        hash = int(buffer_hash * int(max_value-2,8) + max_value/2.0D0,4)
-
-    end function hash_fnv1a32_16_byte
-#endif
+!#ifdef __GFORTRAN__
+!    ! fnv1a hash function
+!    !
+!    ! Arguments
+!    ! ----
+!    !   buffer: integer(kind=16)
+!    !       data to be hashed
+!    !   max_value: integer(kind=4)
+!    !       maximum value of the hash
+!    !
+!    ! Returns
+!    ! ----
+!    !   a 32-bit hash value
+!    !
+!    function hash_fnv1a32_16_byte(buffer, max_value) result(hash)
+!        implicit none
+!        ! dummy
+!        integer(kind=16), intent(in) :: buffer
+!        integer(kind=4) :: max_value
+!        integer(kind=4) :: hash
+!
+!        ! auxiliary
+!        double precision :: buffer_hash
+!        integer(kind=16) :: buffer_buffer
+!        integer(kind=1), dimension(16) :: buffer_list
+!
+!        equivalence (buffer_buffer, buffer_list)
+!
+!        buffer_buffer = buffer
+!
+!        hash = -2128831035
+!        call FNV32(buffer_list, size(buffer_list), hash)
+!
+!!        hash = int(real(hash,8) /  4294967296.0D0 * int(max_value-1,8) + max_value/2,4)
+!
+!        !        <--     hash     -->
+!        !       |--------------------|
+!        !    -2**31               2**31-1        <-- integer(kind=8)
+!        !     -0.5                  0.5          <-- if hash < 0: / 2.0D0**32; else / (2*(2**31-1))
+!        ! -max_value/2+1        max_value/2-1    <-- * (max_value-2)
+!        !      1                  max_value      <-- + max_value / 2
+!        if (hash .lt. 0) then
+!            buffer_hash = real(hash,8) / 2.0D0**32
+!        else if (hash .gt. 0) then
+!            buffer_hash = real(hash,8) / (2.0D0**31 - 1.0D0) / 2.0D0
+!        else
+!            buffer_hash = 0.0D0
+!        end if
+!        hash = int(buffer_hash * int(max_value-2,8) + max_value/2.0D0,4)
+!
+!    end function hash_fnv1a32_16_byte
+!#endif
 
     ! fnv1a hash function
     !
@@ -522,57 +522,57 @@ module lib_hash_function
 
     end function hash_fnv1a64_8_byte
 
-#ifdef __GFORTRAN__
-    ! fnv1a hash function
-    !
-    ! Arguments
-    ! ----
-    !   buffer: integer(kind=16)
-    !       data to be hashed
-    !   max_value: integer(kind=8)
-    !       maximum value of the hash
-    !
-    ! Returns
-    ! ----
-    !   a 64-bit hash value
-    !
-    function hash_fnv1a64_16_byte(buffer, max_value) result(hash)
-        implicit none
-        ! dummy
-        integer(kind=16), intent(in) :: buffer
-        integer(kind=8) :: max_value
-        integer(kind=8) :: hash
-
-        ! auxiliary
-!        integer(kind=4) :: m_hash
-        integer(kind=16) :: buffer_buffer
-        integer(kind=1), dimension(16) :: buffer_list
-        double precision :: buffer_hash
-
-        equivalence (buffer_buffer, buffer_list)
-
-        buffer_buffer = buffer
-
-        hash = -5472609002491880230_8
-        call FNV64(buffer_list, size(buffer_list), hash)
-
-        !        <--     hash     -->
-        !       |--------------------|
-        !    -2**63               2**63-1        <-- integer(kind=8)
-        !     -0.5                  0.5          <-- if hash < 0: / 2.0D0**64; else / (2*(2**63-1))
-        ! -max_value/2+1        max_value/2-1    <-- * (max_value-2)
-        !      1                  max_value      <-- + max_value / 2
-        if (hash .lt. 0) then
-            buffer_hash = real(hash,8) / 2.0D0**64
-        else if (hash .gt. 0) then
-            buffer_hash = real(hash,8) / (2.0D0**63 - 1.0D0) / 2.0D0
-        else
-            buffer_hash = 0.0D0
-        end if
-        hash = int(buffer_hash * int(max_value-2,8) + max_value/2.0D0,8)
-
-    end function hash_fnv1a64_16_byte
-#endif
+!#ifdef __GFORTRAN__
+!    ! fnv1a hash function
+!    !
+!    ! Arguments
+!    ! ----
+!    !   buffer: integer(kind=16)
+!    !       data to be hashed
+!    !   max_value: integer(kind=8)
+!    !       maximum value of the hash
+!    !
+!    ! Returns
+!    ! ----
+!    !   a 64-bit hash value
+!    !
+!    function hash_fnv1a64_16_byte(buffer, max_value) result(hash)
+!        implicit none
+!        ! dummy
+!        integer(kind=16), intent(in) :: buffer
+!        integer(kind=8) :: max_value
+!        integer(kind=8) :: hash
+!
+!        ! auxiliary
+!!        integer(kind=4) :: m_hash
+!        integer(kind=16) :: buffer_buffer
+!        integer(kind=1), dimension(16) :: buffer_list
+!        double precision :: buffer_hash
+!
+!        equivalence (buffer_buffer, buffer_list)
+!
+!        buffer_buffer = buffer
+!
+!        hash = -5472609002491880230_8
+!        call FNV64(buffer_list, size(buffer_list), hash)
+!
+!        !        <--     hash     -->
+!        !       |--------------------|
+!        !    -2**63               2**63-1        <-- integer(kind=8)
+!        !     -0.5                  0.5          <-- if hash < 0: / 2.0D0**64; else / (2*(2**63-1))
+!        ! -max_value/2+1        max_value/2-1    <-- * (max_value-2)
+!        !      1                  max_value      <-- + max_value / 2
+!        if (hash .lt. 0) then
+!            buffer_hash = real(hash,8) / 2.0D0**64
+!        else if (hash .gt. 0) then
+!            buffer_hash = real(hash,8) / (2.0D0**63 - 1.0D0) / 2.0D0
+!        else
+!            buffer_hash = 0.0D0
+!        end if
+!        hash = int(buffer_hash * int(max_value-2,8) + max_value/2.0D0,8)
+!
+!    end function hash_fnv1a64_16_byte
+!#endif
 
 !
 !    ! fnv1a hash function
@@ -760,53 +760,53 @@ module lib_hash_function
         end if
     end function
 
-#ifdef __GFORTRAN__
-    ! ********************************************************* hash
-    !berechnet ndigit-Hash wert der Koordinaten Matrix a,b,max,n ,versuch i
-    integer(kind=8) function hash_kf_16_byte(a,b,max,i,idum) result(hash)
-    implicit none
-        integer(kind=16), intent(in) :: a
-        integer(kind=8),intent(in)::b,max,i
-        integer(kind=8), dimension(2), intent(inout):: idum
-        integer(kind=8) i2
-
-        ! auxiliary
-        integer(kind=16) :: aa
-        integer(kind=8), dimension(2) :: buffer_a
-        real(kind=8) :: buffer
-
-        equivalence(aa, buffer_a)
-
-        aa = a
-
-        idum(1)=int(buffer_a(1)+int(b,kind=8)*int(max,kind=8),kind=8) !als start
-        idum(2)=int(buffer_a(2)+int(b,kind=8)*int(max,kind=8),kind=8) !als start
-        do i2=1,i+2,1  !2=Offset zum einschwingen !
-            idum(1)=int(modulo(real(16807.0D0*idum(1),kind=16),2147483647.0D0),kind=8)
-            idum(2)=int(modulo(real(16807.0D0*idum(2),kind=16),2147483647.0D0),kind=8)
-        end do
-        buffer = real(idum(1),kind=8)/2147483647.0D0
-        buffer = buffer * real(idum(2),kind=8)/2147483647.0D0
-        hash=int(buffer*real(max-1,kind=8),kind=8)
-    end function
-
-    ! ********************************************************* hashpp
-    !beschleunigte Fkt
-    integer(kind=8) function hashpp_kf_16_byte(max,idum) result (hashpp)
-    implicit none
-        integer(kind=8), dimension(2),intent(inout):: idum
-        integer(kind=8), intent(in)::max
-
-        !auxiliary
-        real(kind=8) :: buffer
-        idum(1)=int(modulo(real(16807.0D0*idum(1),kind=16),2147483647.0D0),kind=8)
-        idum(2)=int(modulo(real(16807.0D0*idum(2),kind=16),2147483647.0D0),kind=8)
-
-        buffer = real(idum(1),kind=8)/2147483647.0D0
-        buffer = buffer * real(idum(2),kind=8)/2147483647.0D0
-        hashpp=int(buffer*real(max-1,kind=8),kind=8)
-    end function
-#endif
+!#ifdef __GFORTRAN__
+!    ! ********************************************************* hash
+!    !berechnet ndigit-Hash wert der Koordinaten Matrix a,b,max,n ,versuch i
+!    integer(kind=8) function hash_kf_16_byte(a,b,max,i,idum) result(hash)
+!    implicit none
+!        integer(kind=16), intent(in) :: a
+!        integer(kind=8),intent(in)::b,max,i
+!        integer(kind=8), dimension(2), intent(inout):: idum
+!        integer(kind=8) i2
+!
+!        ! auxiliary
+!        integer(kind=16) :: aa
+!        integer(kind=8), dimension(2) :: buffer_a
+!        real(kind=8) :: buffer
+!
+!        equivalence(aa, buffer_a)
+!
+!        aa = a
+!
+!        idum(1)=int(buffer_a(1)+int(b,kind=8)*int(max,kind=8),kind=8) !als start
+!        idum(2)=int(buffer_a(2)+int(b,kind=8)*int(max,kind=8),kind=8) !als start
+!        do i2=1,i+2,1  !2=Offset zum einschwingen !
+!            idum(1)=int(modulo(real(16807.0D0*idum(1),kind=16),2147483647.0D0),kind=8)
+!            idum(2)=int(modulo(real(16807.0D0*idum(2),kind=16),2147483647.0D0),kind=8)
+!        end do
+!        buffer = real(idum(1),kind=8)/2147483647.0D0
+!        buffer = buffer * real(idum(2),kind=8)/2147483647.0D0
+!        hash=int(buffer*real(max-1,kind=8),kind=8)
+!    end function
+!
+!    ! ********************************************************* hashpp
+!    !beschleunigte Fkt
+!    integer(kind=8) function hashpp_kf_16_byte(max,idum) result (hashpp)
+!    implicit none
+!        integer(kind=8), dimension(2),intent(inout):: idum
+!        integer(kind=8), intent(in)::max
+!
+!        !auxiliary
+!        real(kind=8) :: buffer
+!        idum(1)=int(modulo(real(16807.0D0*idum(1),kind=16),2147483647.0D0),kind=8)
+!        idum(2)=int(modulo(real(16807.0D0*idum(2),kind=16),2147483647.0D0),kind=8)
+!
+!        buffer = real(idum(1),kind=8)/2147483647.0D0
+!        buffer = buffer * real(idum(2),kind=8)/2147483647.0D0
+!        hashpp=int(buffer*real(max-1,kind=8),kind=8)
+!    end function
+!#endif
 
 !    function hash_8_byte(a, max) result(hash)
 !        implicit none
