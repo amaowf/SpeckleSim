@@ -483,6 +483,4 @@ Debug_WIN
 # Visual Studio
 *.u2d
 
-libmath_external
-
 release*
