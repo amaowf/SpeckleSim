@@ -14,7 +14,7 @@
 ! 
 ! @author: Liwei Fu
 	
-program main_tri
+program main
 	use lib_sie_solver_gmres_interface
 	use lib_sie_tri_solver_normal	
 	use lib_sie_quad_solver_normal	
@@ -42,7 +42,7 @@ program main_tri
 		!1- plane wave
 		!2- Gaussian beam
 		!3- Focused Guassian beam
-		calc_p(1) = 2
+		calc_p(1) = 1
 		
 		!When Gaussian beam
 		if (calc_p(1) .eq. 2) then
@@ -59,7 +59,7 @@ program main_tri
 		!1- 'PMCHWT' 
 		!2- 'MCTF'
 		!3- 'ICTF'		
-		calc_p(3) = 1
+		calc_p(3) = 2
 		
 		!calc_p(4) : field evaluation plane/method
 		!1- 'xz' 
@@ -68,7 +68,7 @@ program main_tri
 		!4- 'rcs_n',radar cross section n-polarization 
 		!5- 'rcs_p', radar cross section p-polarization 
 		!6- 'BRDF', bidirectional refelction distribution function
-		calc_p(4) = 5
+		calc_p(4) = 1
 		
 		!calc_p(5) : object type
 		!1- 'sphere'
@@ -77,7 +77,7 @@ program main_tri
 		calc_p(5) = 2
 		
 		if (calc_p(5) .eq. 2)then
-			surface_length = 4.0e-6	
+			surface_length = 1.0e-6	
 		end if
 		
 		!calc_p(6) : field evaluation
@@ -105,13 +105,13 @@ program main_tri
 	subroutine initalize_gmres()	
 	
 		x_initial = 0.0				
-		tree_s_opt = 7
-		truncation_number_default = 7
-		max_iterations = 200
+		tree_s_opt = 30
+		truncation_number_default = 9
+		max_iterations = 2500
 		
 		!when restart is not wished
 		!set restart large
-		restart = 200
+		restart = 2500
 		convergence_tolerance = 1.0e-3
 		precondition_left =  .true. !.false. !
 		
@@ -131,7 +131,7 @@ program main_tri
 		
 		real(dp) :: theta, phi		
 		illumination_p%lambda = 600e-9		
-		illumination_p%theta_in = 30.0*PI/180
+		illumination_p%theta_in = 0.0*PI/180
 		illumination_p%phi_in = 0.0*PI/180
 		theta = illumination_p%theta_in
 		phi = illumination_p%phi_in		
@@ -218,7 +218,7 @@ program main_tri
 			print*, '------------------------------------------------'		
 			call initalize_gmres()
 			if (file_n .gt. 1) then
-				do m = 1, file_n
+				do m = file_start_n, file_n+file_start_n
 					call name_outputfile_multiple(m)
 					if (calc_p(6) .eq. 2) then
 						call lib_sie_tri_solver_normal_II()
@@ -326,11 +326,14 @@ program main_tri
 			File_Element_NodeIndices = 'tt_'//trim(adjustl(file_name_surface))//'_'//trim(file_nr)//'.txt'			
 			file_name_output_I = 'Result_SEH_tri_'//trim(str1)
 			file_name_output_II = 'Result_Efield_tri_'//trim(str2)					
-			if (calc_p(5) .eq. 3)then
+			if (calc_p(2) .eq. 3)then
 				str1 = trim(adjustl(pre_types%formulation))//'_'//trim(file_nr)
-				file_out_error = 'iteration_error_'//trim(str1)								
+				file_out_error = 'iteration_error_'//trim(str1)		
+				print*, '-----------------------------------------------'
+				print*, 'file out error', file_out_error
+				print*, '-----------------------------------------------'
 				file_out_parameters = 'Calculation_parameters_GMRES_'//trim(str1)
-			else !calc_p(5) = 1
+			else !calc_p(2) = 1
 				file_out_parameters = 'Calculation_parameters_normal_'//trim(str1)
 			end if	
 		end if	!	
