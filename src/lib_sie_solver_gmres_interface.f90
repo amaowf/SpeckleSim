@@ -100,7 +100,7 @@ module lib_sie_solver_gmres_interface
 		rv%convergence_tolerance = convergence_tolerance! 1D-3
 		rv%orthogonalization_scheme = GMRES_ORTHOGONALIZATION_SCHEME_IMGS
 		rv%use_recurence_formula_at_restart = .false.
-		rv%residual_calc_explicitly = .true.
+		rv%residual_calc_explicitly = .false.
 		rv%no_of_elements_vector_x = m_pairs*2
 		if (precondition_left) then
 			rv%preconditioning = GMRES_PRECONDITIONING_LEFT
@@ -180,7 +180,7 @@ module lib_sie_solver_gmres_interface
 				write (206, *) 'evaluation_parameter%dim_b(nm) =   ', evaluation_parameter%dim_b*1.0e+9
 				write (206, *) 'illumination_p%theta_in =          ',	illumination_p%theta_in*180/PI
 				write (206, *) 'illumination_p%phi_in =          ',	illumination_p%phi_in*180/PI
-				write (206, *) 'Sphere n_disc =                ', tri_sp_parameters%n_disc
+				write (206, *) 'm_pairs =                ', m_pairs
 				write (206, *) 'Sphere sampling point =        ', truncation_number
 				write (206, *) 'GMRES_time (min.) =               ', GMRES_time
 				write (206, *) 'Iteration procedure =          ', m_gmres_parameter%orthogonalization_scheme				

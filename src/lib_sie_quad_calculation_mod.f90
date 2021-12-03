@@ -1,23 +1,9 @@
-!    Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
-!
-!    This file is part of SpeckleSim.
-!
-!    SpeckleSim is free software: you can redistribute it and/or modify
-!    it under the terms of the GNU General Public License as published by
-!    the Free Software Foundation, either version 3 of the License, or
-!    (at your option) any later version.
-!
-!    SpeckleSim is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-!    GNU General Public License for more details.!
-! 
-! @author: Liwei Fu
-	
 module lib_sie_quad_calculation_mod
 
 	use lib_sie_math
 	use lib_sie_constants
+	!use lib_sie_type_function
+	!use lib_sie_data_container
 	use lib_sie_quad_data_container
 	use lib_sie_integration_points
 	
@@ -49,7 +35,7 @@ module lib_sie_quad_calculation_mod
 	public :: get_vector_b_quad	
 	public :: find_midpoint_edge_quad
 	
-	!type(point), dimension(:), allocatable :: r_local
+	type(point), dimension(:), allocatable :: r_local
 	
 	type derived_element_parameters_TypeB
 		real(dp), dimension(10) :: n_rot_N
@@ -65,15 +51,15 @@ module lib_sie_quad_calculation_mod
 	
    contains
 	
-	function lib_sie_quad_input_field_calculation(r_local)result(field_input)	
+	subroutine lib_sie_quad_input_field_calculation(field_input)
 
 		implicit none
-		type(point), dimension(:), allocatable, intent(in) :: r_local
+		type(point), dimension(:), allocatable :: r_local
 		integer :: n1, n2, m, ngp
 		
 		complex(dp) :: k1
 		
-		type(lib_sie_evaluation_point_type), dimension(:), allocatable :: field_input		
+		type(lib_sie_evaluation_point_type), dimension(:), allocatable, intent(out) :: field_input		
 		
 		n1 = evaluation_parameter%N_dim(1)
 		n2 = evaluation_parameter%N_dim(2)
@@ -81,11 +67,13 @@ module lib_sie_quad_calculation_mod
 		allocate(field_input(n1*n2))
 		k1 = k0		
 		
+		call get_evaluation_points(evaluation_parameter, r_local, pre_types%evaluation)
+		
 		do m = 1, n1*n2
 			if (pre_types%illumination == 'Gaussian')then
 				call Gaussian_beam(beam_waist, r_local(m)%point, illumination_p, field_input(m)%e_field, k1)
-			else if (pre_types%illumination == 'Focused')then
-				call Gaussian_beam_focused(beam_waist, r_local(m)%point, field_input(m)%e_field, k1)
+			!else if (pre_types%illumination == 'Conical')then
+			!	call conical_illumination(p_obj, r_local(m)%point, illumination_p, field_input(m)%e_field)	
 			else if ((pre_types%illumination == 'Plane') .or. (pre_types%illumination == 'plane'))then
 				field_input(m)%e_field%vector = illumination_p%E_in*exp(-im*dot_product(k1*illumination_p%k_in, r_local(m)%point))				
 			else 
@@ -98,7 +86,7 @@ module lib_sie_quad_calculation_mod
 			field_input(m)%ngp = ngp
 		end do
 		return
-	end function
+	end subroutine
 		
 	subroutine get_vector_b_quad(Edge_I, vector_b)
 		complex(kind = dp), dimension(:), allocatable, intent(out) ::  vector_b		
@@ -187,7 +175,11 @@ module lib_sie_quad_calculation_mod
 			ngp = 0
 		end if
 		return
-	end function	
+	end function
+	
+
+	
+	
 	
 	subroutine find_midpoint_element_quad(struct)
 		implicit none
@@ -762,6 +754,134 @@ outer: do i = 1, 101
 		end if		
 		return
 	end subroutine
+	
+	!subroutine Sorting_edge_old(struc_temp, N_edge, edge_vs_element, element_vs_edge)!Edge_I, Edge_II,
+ !       implicit none
+ !       type(structure_quad), intent(in) :: struc_TEMP
+ !       integer :: factor_I, factor_II, pII_a, pI_a!
+ !       integer :: Edge(10, 2), edge_tmp(2)!
+ !       integer :: A_edge(7)!
+ !       integer, intent(out) :: N_edge 
+ !       integer, dimension (N_el, 10) :: Edge_Order
+ !       integer :: i, j, s, p, q, jj, n_CommonEdge, m
+	!	  
+	!	  type(element_edges), dimension(:), allocatable, intent(out) :: element_vs_edge
+	!	  type(edges_parameter), dimension(:), allocatable, intent(out) :: edge_vs_element
+	!	  type(edges_parameter), dimension(:), allocatable :: nr_edges_tmp, edge_vs_element_tmp, nr_element_tmp
+	!	  
+	!	  allocate(element_vs_edge(N_el), edge_vs_element_tmp(n_el*10), nr_edges_tmp(10), nr_element_tmp(4))
+	!	  
+	!	do i = 1, 10
+	!		nr_edges_tmp(i)%edge_p(1:5) = 0
+	!	end do
+	!	do i = 1, 4
+	!		nr_element_tmp(i)%edge_p(1:5) = 0
+	!	end do
+	!	
+ !       edge(1, 1:2) = (/1, 2/) ! 
+ !       edge(2, 1:2) = (/2, 3/) ! 
+ !       edge(3, 1:2) = (/7, 6/) ! 
+ !       edge(4, 1:2) = (/6, 5/)
+ !       edge(5, 1:2) = (/8, 4/)
+ !       edge(6, 1:2) = (/1, 8/)
+ !       edge(7, 1:2) = (/8, 7/)
+ !       edge(8, 1:2) = (/3, 4/)
+ !       edge(9, 1:2) = (/4, 5/)
+ !       edge(10, 1:2) = (/2, 6/)
+ !       
+ !       do i = 1, N_el*10             
+	!			edge_vs_element_tmp(i)%edge_p(1:5) = (/0, 0, 0, 0, 0/) 
+ !       end do   
+ !       do s = 1, N_el !Initialize the edge matrix 
+ !           Edge_Order(s, 1:10) = 1 !
+ !       end do  
+ !     
+ !     !Sort the independent edges
+ !     p = 0
+	!	do s = 1, N_el!		
+	!		!The number of elements having edgeoverlap with element-s              
+	!		n_commonedge = size(struc_quad%elements(s)%edge_overlap)
+	!		q = 0
+	!		do j = 1, 10 !Edges in element-s
+	!		if (Edge_order(s, j) .NE. 0) then
+	!			p = p + 1
+	!			q = q + 1		
+	!			edge_vs_element_tmp(p)%edge_p = (/s, j, 0, 0, 0/)
+	!			jj = 0 		
+	!			do i = 1, n_CommonEdge ! number of elements having common edges with element-s
+	!				A_edge(1:7) = struc_temp%elements(s)%Edge_overlap(i)%CommonEdge_Elements(2:8)
+	!				
+	!				!This is to change the order of the nodes (1, 7, 8) into (1, 8, 7)
+	!				if ((A_edge(3) - A_edge(2)) .NE. 1 ) then !the third and second node on the edge
+ !                 m = A_edge(3) 
+ !                 A_edge(3) = A_edge(4)  
+ !                 A_edge(4) = m        
+ !                 m = A_edge(6) 
+ !                 A_edge(6) = A_edge(7) 
+ !                 A_edge(7) = m 
+ !              end if
+	!					  
+ !              if ((A_edge(2) .eq. Edge(j, 1)) .and. (A_edge(3) .eq. Edge(j, 2))) then
+ !                 pI_a = j !Edge index of element-s
+ !                 factor_I = 1
+	!					edge_tmp = (/A_edge(5), A_edge(6)/)
+	!					call sorting_edge_sub(edge, edge_tmp)
+	!					jj = a_edge(1)
+	!					pII_a = edge_tmp(1)
+	!					factor_II = edge_tmp(2)							
+ !              else if ((A_edge(3) .eq. Edge(j, 1)) .and. (A_edge(2) .eq. Edge(j, 2))) then 
+ !                 pI_a = j                        
+ !                 factor_I = -1
+	!					edge_tmp = (/A_edge(5), A_edge(6)/)
+	!					call sorting_edge_sub(edge, edge_tmp)
+	!					jj = a_edge(1)
+	!					pII_a = edge_tmp(1)
+	!					factor_II = edge_tmp(2)	
+ !              else if ((A_edge(3) .eq. Edge(j, 1)) .and. (A_edge(4) .eq. Edge(j, 2))) then 
+ !                 pI_a = j !
+ !                 factor_I = 1 !
+	!					edge_tmp = (/A_edge(6), A_edge(7)/)
+	!					call sorting_edge_sub(edge, edge_tmp)
+	!					jj = a_edge(1)
+	!					pII_a = edge_tmp(1)
+	!					factor_II = edge_tmp(2)	
+ !              else if ((A_edge(4) .eq. Edge(j, 1)) .and. (A_edge(3) .eq. Edge(j, 2))) then
+ !                 pI_a = j
+ !                 factor_I = -1
+	!					edge_tmp = (/A_edge(6), A_edge(7)/)
+	!					call sorting_edge_sub(edge, edge_tmp)
+	!					jj = a_edge(1)
+	!					pII_a = edge_tmp(1)
+	!					factor_II = edge_tmp(2)
+ !              end if					
+ !              if ( (jj .NE. 0)) then   !                 
+ !                 Edge_order(jj, pII_a) = 0 ! The edge has been used	
+	!					nr_edges_tmp(q)%edge_p(1:5) = (/p, pI_a, jj, pII_a, factor_I*factor_II/)
+	!					edge_vs_element_tmp(p)%edge_p = (/s, pI_a, jj, pII_a, factor_I*factor_II/)
+ !              else !for the case of j = 5, and 10					
+	!					nr_edges_tmp(q)%edge_p(1:5) = (/p, j, 0, 0, 0/)
+	!				end if
+	!				
+ !           end do !Loop i-n_CommonEdge
+	!			
+ !        end if 
+	!		
+	!		end do 
+	!		
+	!		!edge_II
+	!		allocate(element_vs_edge(s)%nr_edges(q))
+	!		do i = 1, q
+	!			element_vs_edge(s)%nr_edges(i)%edge_p = nr_edges_tmp(i)%edge_p
+	!		end do			
+	!	end do !end of s-loop
+ !     
+	!	!edge_I
+ !     N_edge = p
+	!	allocate(edge_vs_element(n_edge))  		
+	!	edge_vs_element(1:n_edge) = edge_vs_element_tmp(1:n_edge)
+	!	deallocate(nr_edges_tmp, edge_vs_element_tmp)
+ !     return		
+ !   end subroutine Sorting_edge_old
 	 
 	subroutine sorting_edge_sub(edge, edge_tmp)
 		implicit none
@@ -814,6 +934,8 @@ outer: do i = 1, 101
             end do         
             allocate(struct%elements(i)%edge_overlap(nn_e))
             allocate(struct%elements(i)%corner_overlap(nn_c)) 
+            !struct%elements(i)%n_EA = nn_e
+            !struct%elements(i)%n_Corner = nn_c
             do j = 1, nn_e
                 struct%elements(i)%edge_overlap(j) = temp_adjacent_edge(j)
             end do
@@ -856,7 +978,8 @@ outer: do i = 1, 101
             end do         
             allocate(struct%elements(i)%edge_overlap(nn_e))
             allocate(struct%elements(i)%corner_overlap(nn_c)) 
-   
+            !struct%elements(i)%n_EA = nn_e				
+            !struct%elements(i)%n_Corner = nn_c
             do j = 1, nn_e
                 struct%elements(i)%edge_overlap(j) = temp_adjacent_edge(j)
             end do
@@ -972,31 +1095,109 @@ outer: do i = 1, 101
       return     
    end function  phi_range_3Feld
    
+   !function Projection_point(R_A, Element_q, ksi_0, eta_0) 
+   ! ! Eqs. J.3-J.10 in Huber's dissertation
+   ! ! In case of quasi-singular, the projection of an observation point 
+   ! ! on a surface element q has to be found first
+   !     implicit none
+   !     real(kind = dp), intent(in) :: Element_q(8, 3), R_A(3), ksi_0, eta_0 
+   !     real(kind = dp) :: rq(3), Eu(3), Ev(3), f1, f2, df1, df2, f1_d, f2_d, Nod_d(8, 2)
+   !     type(Projection) :: Projection_point
+   !     real(kind = dp), dimension(2, 2) :: A_d, AINV_d
+   !     real(kind = dp), dimension(8, 4) :: d_r
+   !     integer :: i, j, m, n
+   !     integer, parameter :: MaxIt = 100
+   !     LOGICAL :: OK_FLAG
+   !  
+   !     real(kind = dp) ::  dr_ksi_ksi(3), dr_ksi_eta(3), dr_eta_ksi(3), dr_eta_eta(3), ksi_2, eta_2, ksi_1, eta_1
+   !     real(kind = dp) :: f1d_ksi, f1d_eta, f2d_eta, f2d_ksi, delta_ksi, delta_eta
+   !     Projection_point%point_proj(1:2) = (/0.0, 0.0/)
+   !     Projection_point%found = .false.
+   !     
+   !     ksi_1 = ksi_0;
+   !     eta_1 = eta_0;
+   !
+   !     do m = 1, MaxIt
+   !         Nod_d = N_differential(ksi_1, eta_1)
+   !         do n = 1, 3
+   !             rq(n) = dot_product(R_shape(ksi_1, eta_1),  Element_q(1:8, n))
+   !             Eu(n) = dot_product(Nod_d(1:8, 1),  Element_q(1:8, n))
+   !             Ev(n) = dot_product(Nod_d(1:8, 2),  Element_q(1:8, n)) 
+   !         end do    
+   !
+   !         f1 = dot_product(Eu, (R_A - rq))  !Eq. J.3
+   !         f2 = dot_product(Ev, (R_A - rq))  !Eq. J.3   
+   !         d_r = Nd_differential(ksi_1, eta_1) !the second derivative of the shape function
+   !         
+   !         do i = 1, 3                
+   !             dr_ksi_ksi(i) = dot_product(d_r(:, 1), Element_q(:, i)) !The second derivative of r 
+   !             dr_ksi_eta(i) = dot_product(d_r(:, 2), Element_q(:, i))
+   !             dr_eta_ksi(i) = dot_product(d_r(:, 3), Element_q(:, i))
+   !             dr_eta_eta(i) = dot_product(d_r(:, 4), Element_q(:, i))                
+   !         end do       
+   !
+   !         f1d_ksi = dot_product(dr_ksi_ksi, (R_A - rq))
+   !         f1d_eta = dot_product(dr_ksi_eta, (R_A - rq))
+   !         f2d_ksi = dot_product(dr_eta_ksi, (R_A - rq))
+   !         f2d_eta = dot_product(dr_eta_eta, (R_A - rq))
+   !         A_d(1, 1) = f1d_ksi
+   !         A_d(1, 2) = f1d_eta
+   !         A_d(2, 1) = f2d_ksi
+   !         A_d(2, 2) = f2d_eta
+   !         
+   !         call M22INV (A_d, AINV_d, OK_FLAG)
+   !         delta_ksi = -(AINV_d(1, 1)*f1 + AINV_d(1, 2)*f2) !multiply the inversed Jacobian matrix
+   !         delta_eta = -(AINV_d(2, 1)*f1 + AINV_d(2, 2)*f2)  
+   !           !print*, 'delta_ksi', delta_ksi
+   !           !print*, 'delta_eta', delta_eta
+   !         ksi_2 = ksi_1 + delta_ksi !Newton-Raphson method to find out the solution of f(x)=0
+   !         eta_2 = eta_1 + delta_eta
+   !         ksi_1 = ksi_2 
+   !         eta_1 = eta_2             
+   !         if ((abs(delta_ksi/ksi_2) < 1e-3) .and. (abs(delta_eta/eta_2) < 1e-3)) then
+   !             Projection_point%point_proj(1) = ksi_2
+   !             Projection_point%point_proj(2) = eta_2
+   !             Projection_point%found = .true.
+   !             print*, 'ksi_1', ksi_1
+   !             print*, 'eta_1', eta_1
+   !             print*, 'Convergence is achieved at m =', m
+   !             exit !Convergence is achieved       
+   !         else if (abs(ksi_2) > 1 .or. abs(eta_2)>1) then
+   !             print*, 'The projected point is not on the element surface, or'
+   !             print*, 'a nonproper guess point'
+   !             print*, 'iteration run', m
+   !             exit 
+   !         else if (m == MaxIt) then 
+   !          print*, 'No projected point was found on the element surface'
+   !         end if
+   !     end do 
+   !     return  
+   ! end function Projection_point
    
-	SUBROUTINE M22INV (A, AINV, OK_FLAG)
-      implicit none
-      real(kind = dp), dimension(2,2), intent(in)  :: A
-      real(kind = dp), dimension(2,2), intent(out) :: AINV
-      LOGICAL, INTENT(OUT) :: OK_FLAG
+    SUBROUTINE M22INV (A, AINV, OK_FLAG)
+        implicit none
+        real(kind = dp), dimension(2,2), intent(in)  :: A
+        real(kind = dp), dimension(2,2), intent(out) :: AINV
+        LOGICAL, INTENT(OUT) :: OK_FLAG
 
-      real(kind = dp), parameter :: EPS = 1.0D-10
-      real(kind = dp) :: DET
-      real(kind = dp), dimension(2,2) :: COFACTOR
+        real(kind = dp), parameter :: EPS = 1.0D-10
+        real(kind = dp) :: DET
+        real(kind = dp), dimension(2,2) :: COFACTOR
 
-      DET =   A(1,1)*A(2,2) - A(1,2)*A(2,1)
-      if (ABS(DET) .LE. EPS) then
-         AINV = 0.0D0
-         OK_FLAG = .FALSE.
-         return
-      end if
+        DET =   A(1,1)*A(2,2) - A(1,2)*A(2,1)
+        if (ABS(DET) .LE. EPS) then
+            AINV = 0.0D0
+            OK_FLAG = .FALSE.
+            return
+        end if
 
-      COFACTOR(1,1) = +A(2,2)
-      COFACTOR(1,2) = -A(2,1)
-      COFACTOR(2,1) = -A(1,2)
-      COFACTOR(2,2) = +A(1,1)
+        COFACTOR(1,1) = +A(2,2)
+        COFACTOR(1,2) = -A(2,1)
+        COFACTOR(2,1) = -A(1,2)
+        COFACTOR(2,2) = +A(1,1)
 
-      AINV = transpose(COFACTOR) / DET
-      OK_FLAG = .TRUE.
+        AINV = transpose(COFACTOR) / DET
+        OK_FLAG = .TRUE.
 		return
 	end subroutine M22INV	
 	
@@ -1082,7 +1283,6 @@ outer: do i = 1, 101
 		type(Vector_c), dimension(2), intent(out) :: Sum_aa
 			
 		!dummy
-		type(point), dimension(:), allocatable :: r_local
       integer i, j, n
       real(kind = dp):: R_norm !
       complex(kind = dp) :: GradG(3), Greenf, GG_SS

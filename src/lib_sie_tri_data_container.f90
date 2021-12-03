@@ -1,4 +1,4 @@
-!    Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
+!Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
 !
 !    This file is part of SpeckleSim.
 !
@@ -15,7 +15,7 @@
 ! @author: Liwei Fu
 
 module lib_sie_tri_data_container
-	use ml_fmm_type
+	!use ml_fmm_type
 	
 	use lib_sie_math
 	use lib_sie_constants
@@ -37,7 +37,7 @@ module lib_sie_tri_data_container
 	
 	real(dp), dimension(3) :: centroid	
 	type(edges_in_structure), dimension(:), allocatable :: structure_edges	
-	integer, dimension(:), allocatable :: np_arr, ne_arr!
+	integer, dimension(:), allocatable :: np_arr, ne_arr!	
 	
 	contains
 	
@@ -51,13 +51,13 @@ module lib_sie_tri_data_container
 		integer :: m
 		type(point) :: shift
 		
-		shift%point = (/0.0, 0.0, 800.0e-9/)
+		!shift%point = (/0.0, 0.0, 500.0e-9/)
 		do m = 1, number_objects			
 			call read_pp_tt_file_tri(struc_tri_surfaces(m))
-			tri_sf_parameters(m)%D(1) = surface_length
-			tri_sf_parameters(m)%D(2) = surface_length
-			tri_sf_parameters(m)%centroid%point = (m-1)*shift%point	
-			tri_sf_parameters(m)%eps_r2 = eps_r2_main !(2.25, 0.0)! (-16.075, -0.442342)!(-17.2, -0.498)! 
+			tri_sf_parameters(m)%D(1) = 2*geometry_p(1)
+			tri_sf_parameters(m)%D(2) = geometry_p(2)
+			tri_sf_parameters(m)%centroid%point = surface_center
+			tri_sf_parameters(m)%eps_r2 = eps_r2_main 
 			tri_sf_parameters(m)%eps_r1 = (1.0, 0.0)
 		end do	
 		!eps_r2 = (-17.2, -0.498) !(-8.0, - 1.66) !(2.50, 0.0)!
@@ -70,16 +70,16 @@ module lib_sie_tri_data_container
 		
 		shift%point = (/1000.0e-9, 0.0, 0.0/)
 		do m = 1, number_objects		
-			tri_sp_parameters(m)%D = 500e-9
+			tri_sp_parameters(m)%D = geometry_p(1)*2
 			tri_sp_parameters(m)%centroid%point = shift%point*(m-1)
-			tri_sp_parameters(m)%eps_r2 = eps_r2_main! (-16.075, -0.442342)!(2.465, 0.0)! 
+			tri_sp_parameters(m)%eps_r2 = eps_r2_main! 
 			tri_sp_parameters(m)%eps_r1 = (1.0, 0.0)
 			!n_disc = 4x(4x6-6)-6 
 			!n_disc = 4x(4x(4x6-6)-6)-6....
 			!n_disc = 6, 18, 66, 1026, 4098, 16386, 65538, 80500 
 			!n_disc = 66(nel=128), 258(nel = 512), 1026(nel = 2048)
 			!n_disc = 4098(nel = 8192), 16386(nel=32768)
-			tri_sp_parameters(m)%n_disc =  258! 4098! 66! 65538 !,  16386!  16386 ! 1026			
+			tri_sp_parameters(m)%n_disc = n_disc! 1026!  4098! 258!  65538 ! 16386!     66! 
 		end do	
 		
 		!when the spheres have different size and disretization
@@ -105,52 +105,70 @@ module lib_sie_tri_data_container
 	
 	subroutine set_evaluation_parameters_tri()	
 		implicit none		
-		real(dp) :: phi
+		real(dp) :: phi, r_far
 		
 		evaluation_parameter%tot_field = total_field
 		
-		if ((pre_types%evaluation .eq. 'rcs_p') .or.  (pre_types%evaluation .eq. 'rcs_n') .or. (pre_types%evaluation .eq. 'BRDF')) then			
+		if ((pre_types%evaluation .eq. 'rcs_p') .or.  (pre_types%evaluation .eq. 'rcs_n') .or. &
+			(pre_types%evaluation .eq. 'BRDF_p') .or. (pre_types%evaluation .eq. 'BRDF_n')) then			
 			select case (pre_types%evaluation)
 				case('rcs_p')
 					phi = 0 !
 				case('rcs_n')
 					phi = PI/2 !
-				case('BRDF')	
+				case('BRDF_p')	
 					phi = 0 !
+				case('BRDF_n')	
+					phi = PI/2 !					
 			end select
 			
 			!theta
 			evaluation_parameter%dim_a(1) = theta_start!
 			evaluation_parameter%dim_a(2) = theta_end!
-			evaluation_parameter%dim_b(1) = phi !phi_start!
-			evaluation_parameter%dim_b(2) = phi! phi_end!			
-			evaluation_parameter%N_dim(1) = 301 !for theta
-			evaluation_parameter%N_dim(2) = 1!for phi
-			if (pre_types%object .eq. 'sphere') then
-				evaluation_parameter%dim_c = -sum(tri_sp_parameters(1:number_objects)%D)*5e+9 !
-			else if (pre_types%object .eq. 'surface') then				
+			evaluation_parameter%dim_b(1) = phi!
+			evaluation_parameter%dim_b(2) = phi!			
+			evaluation_parameter%N_dim(1) = sampling_na  !for theta
+			evaluation_parameter%N_dim(2) = sampling_nb	!for phi
+			
+			
+			if (calc_p(7) .eq. 2) then
+				r_far = -5.0e+9
+			else 
+				r_far = 5.0e+9
+			end if
+			
+			!evaluation_parameter%dim_c = r_far
+			if (calc_p(5) .eq. 1) then !'sphere'
+				evaluation_parameter%dim_c = -sum(tri_sp_parameters(1:number_objects)%D)*r_far
+			else if (calc_p(5) .ge. 2) then !surface
 				evaluation_parameter%dim_c = -(sum(tri_sf_parameters(1:number_objects)%D(1)) &
-				+ sum(tri_sf_parameters(1:number_objects)%D(2)))*5e+9 !
+					+ sum(tri_sf_parameters(1:number_objects)%D(2)))*r_far !			
 			else 
 				print*, 'Wrong calculation type'
 				call exit				
 			end if	
 		
 		else
-			evaluation_parameter%N_dim(1) = 201
-			evaluation_parameter%N_dim(2) = 201
+			evaluation_parameter%N_dim(1) = sampling_na
+			evaluation_parameter%N_dim(2) = sampling_nb
 			if (pre_types%object .eq. 'sphere') then
-				evaluation_parameter%dim_c = 0.0 !the position of the third dimension
-				evaluation_parameter%dim_a(1) = -sum(tri_sp_parameters(1:number_objects)%D)*2.5
-				evaluation_parameter%dim_a(2) = sum(tri_sp_parameters(1:number_objects)%D)*2.5
-				evaluation_parameter%dim_b(1) = -sum(tri_sp_parameters(1:number_objects)%D)*2.5
-				evaluation_parameter%dim_b(2) = sum(tri_sp_parameters(1:number_objects)%D)*2.5
+				!the position of the third dimension
+				evaluation_parameter%dim_c = position_c 
+				
+				!-sum(tri_sp_parameters(1:number_objects)%D)*2.5 for several spheres
+				evaluation_parameter%dim_a(1) = dim_a_min!
+				evaluation_parameter%dim_a(2) = dim_a_max!
+				evaluation_parameter%dim_b(1) = dim_b_min!
+				evaluation_parameter%dim_b(2) = dim_b_max!
 			else if (pre_types%object .eq. 'surface') then					
-				evaluation_parameter%dim_c = 0.0e-6 !the position of the third dimension
-				evaluation_parameter%dim_a(1) = -sum(tri_sf_parameters(1:number_objects)%D(1))*2.5
-				evaluation_parameter%dim_a(2) = sum(tri_sf_parameters(1:number_objects)%D(1))*2.5
-				evaluation_parameter%dim_b(1) = -sum(tri_sf_parameters(1:number_objects)%D(2))*2.5
-				evaluation_parameter%dim_b(2) = sum(tri_sf_parameters(1:number_objects)%D(2))*2.5
+				!the position of the third dimension
+				evaluation_parameter%dim_c = position_c 
+				
+				!-sum(tri_sf_parameters(1:number_objects)%D(1))*2.5
+				evaluation_parameter%dim_a(1) = dim_a_min 
+				evaluation_parameter%dim_a(2) = dim_a_max 
+				evaluation_parameter%dim_b(1) = dim_b_min 
+				evaluation_parameter%dim_b(2) = dim_b_max 
 			else
 				print*, 'Wrong calculation type!'
 				call exit
@@ -193,12 +211,12 @@ module lib_sie_tri_data_container
 			print*, 'Not a proper object type.'
 		end if
 		
-		if (data_structure_type .eq. 'top_down') then
-			tree_l_max = 4	
-			tree_bounding_box(1)%x = (/-1.0, -1.0, -1.0/)*(illumination_p%lambda)*2**(tree_l_max-1)
-			tree_bounding_box(2)%x = (/1.0, 1.0, 1.0/)*illumination_p%lambda*2**(tree_l_max-1)!
-						
-		end if 
+		!if (data_structure_type .eq. 'top_down') then
+		!	tree_l_max = 4	
+		!	tree_bounding_box(1)%x = (/-1.0, -1.0, -1.0/)*(illumination_p%lambda)*2**(tree_l_max-1)
+		!	tree_bounding_box(2)%x = (/1.0, 1.0, 1.0/)*illumination_p%lambda*2**(tree_l_max-1)!
+		!				
+		!end if 
 	end subroutine
 	
 	subroutine set_local_material_parameters_tri()		
@@ -305,15 +323,15 @@ module lib_sie_tri_data_container
 		read(*,'(A)') file_name_surface
 		
 		file_name_in = trim(adjustl(file_name_surface))//'_pp.mphtxt'	
-	
+	 
 		file_name_out = 'pp_'//trim(adjustl(file_name_surface))//'.txt'
-	
+	 
 		call read_file_array_size_returned_tri(file_name_in, Np)
-	
+	 
 		print*, 'Np=', Np
-	
+	 
 		allocate(pp(3, Np))
-	
+	 
 		open(unit = in_unit, file = trim(file_name_in))	
 		do mm = 1, Np
 			read(in_unit, *) pp(1:3, mm)		
@@ -322,11 +340,9 @@ module lib_sie_tri_data_container
 		
 		open(unit = out_unit, file = trim(file_name_out))
 		do mm = 1, Np
-		 !  tmp = pp(1, mm)
-			!pp(1, mm) = pp(3, mm)
-			!pp(3, mm) = pp(2, mm)
-			!pp(2, mm) = tmp		
-			pp(3, mm) = pp(3, mm)	!reverse the direction of the surface
+		
+		 !shift the surface position
+		 ! pp(3, mm) = pp(3, mm) + shift	
 			write(out_unit, *) pp(:, mm)		
 		end do	
 		close(out_unit)	

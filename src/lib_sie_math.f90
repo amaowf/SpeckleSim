@@ -1,19 +1,3 @@
-!    Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
-!
-!    This file is part of SpeckleSim.
-!
-!    SpeckleSim is free software: you can redistribute it and/or modify
-!    it under the terms of the GNU General Public License as published by
-!    the Free Software Foundation, either version 3 of the License, or
-!    (at your option) any later version.
-!
-!    SpeckleSim is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-!    GNU General Public License for more details.!
-! 
-! @author: Liwei Fu
-	
 module lib_sie_math
 	
 	use lib_sie_constants
@@ -23,6 +7,8 @@ module lib_sie_math
 	use libmath
 	
 	implicit none
+	
+	real(dp), dimension(:), allocatable, public :: f_boundary_rs
 	
 	interface init_list_sie
 		module procedure init_list_sie_c
@@ -103,7 +89,8 @@ module lib_sie_math
 		real(dp), intent(in) :: w0
 		
 		!kd: wavevector
-		complex(dp), intent(in) :: kd		
+		complex(dp), intent(in) :: kd
+		
 		
 		!dummy
 		integer :: i
@@ -142,10 +129,113 @@ module lib_sie_math
 		return
 	end subroutine Gaussian_beam
 	
-	subroutine get_evaluation_points(evaluation_p, evaluation_type, r_local)! 		
+	!According to T. Pahl 2020 (Optics Express)
+	!Using plane wave illumination with a normal incidence 
+	subroutine conical_illumination(p_obj, r_local, illumination, E_surf)	
+		type(lib_sie_illumination_parameter), intent(in) :: illumination
+		real(dp), intent(in) :: r_local(3)
+		type(lib_sie_parameter_objective), intent(in) :: p_obj		
+		type(vector_c), intent(out) :: E_surf
+		
+		!dummy
+		integer :: nm, m, i, j
+		real(dp), dimension(:), allocatable :: jn
+		real(dp) :: n_air, k_in(3), kx, ky, kz, ph, E_in(2) !ph: the pupil function, can be extended		
+		real(dp) :: theta_min, theta_max, phi_min, phi_max, k_rho, x_j, trf(3),  E_tmp(3)
+		
+		real(dp) :: k0, dtheta, dphi, theta, phi,filter_ph, factor_m, factor_lp
+		integer :: Nx, Ny
+		
+		complex(dp) :: E_surf_tmp(3), phase_tmp
+		nm = 2
+		m = 2
+		
+		allocate(jn(1:m))
+		
+		n_air = 1.0
+		Nx = 21
+		Ny = Nx
+		
+		!Arbitrary factor to obtain the value of maximum E_field around 1.0
+		factor_m = 8.0	
+		
+		theta_min = 0.0
+		theta_max = asin(p_obj%NA/n_air);
+		
+		phi_min = 0
+		phi_max = -2*PI
+		
+		if (illumination%k_in(3) .le. 0.0) then
+			factor_lp = -1
+		else
+			factor_lp = 1
+		end if			
+		
+		dtheta = (theta_max-theta_min)/(Nx-1)
+		dphi = (phi_max-phi_min)/(Ny-1)
+		
+		k0 = PI*2/illumination%lambda		
+		E_in = illumination%E_in(1:2)
+			
+		Ph = 1.0 !for temparory use	
+		E_surf%vector(1:3) = (0.0, 0.0)				
+		do i = 1, Nx !
+			theta = theta_min + dtheta*(i) 
+			do j = 1, Ny-1
+			   phi = phi_min + dphi*(j-1)
+				kx = sin(theta)*cos(phi)				
+				ky = sin(theta)*sin(phi)
+				kz = cos(theta)*factor_lp
+				k_in = (/kx, ky, kz/)*k0								
+				k_rho = sqrt(kx**2 + ky**2)*k0
+				x_j = k_rho*p_obj%r_ph/p_obj%M				
+				jn = lib_math_bessel_spherical_first_kind(x_j, 0, nm)				
+							
+				call field_rotation_conical_illumination(theta, phi, E_in, E_tmp)
+			
+				trf = dtheta*dphi*sin(theta)*cos(theta)*E_tmp
+				
+				!check which order should be in jn()
+				filter_ph = 2*PI*p_obj%r_ph/(k_rho*p_obj%M)*jn(1)*Ph
+				
+				!First using no filter function
+				E_surf_tmp = exp(-im*dot_product(k_in, r_local))*k0**2/(4*PI**2)*trf!*filter_ph
+				E_surf%vector = E_surf%vector + E_surf_tmp*factor_m				
+			end do		
+		end do
+		deallocate(jn)		
+	end subroutine
+	
+	!According to equation (2) and (5) in Pahl, 2021
+	subroutine field_rotation_conical_illumination(theta, phi, Ein_t, E_in)
+		real(dp), intent(in) :: theta, phi
+		real(dp), intent(in) :: Ein_t(2)
+		real(dp) :: Rm(3, 2)
+		real(dp), intent(out) :: E_in(3)
+		real(dp) :: a, b, c, d
+		
+		a = sin(theta)		
+		b = cos(theta)
+		c = sin(phi)
+		d = cos(phi)
+		
+		Rm(1,1) = d**2*b + c**2
+		Rm(1,2) = c*d*(b-1)
+		Rm(2,1) = c*d*(b-1)
+		Rm(2,2) = c**2*b + d**2
+		Rm(3,1) = a*d
+		Rm(3,2) = a*c
+		!
+		E_in(1) = Rm(1, 1)*Ein_t(1) + Rm(1, 2)*Ein_t(2)
+		E_in(2) = Rm(2, 1)*Ein_t(1) + Rm(2, 2)*Ein_t(2)
+		E_in(3) = Rm(3, 1)*Ein_t(1) + Rm(3, 2)*Ein_t(2)
+	
+	end subroutine
+	
+	subroutine get_evaluation_points(evaluation_p, r_local, evaluation_type)! 
+		type(point), dimension(:), allocatable, intent(out) :: r_local
 		character(len = 10), intent(in) :: evaluation_type
 		type(lib_sie_evaluation_parameter_type), intent(in) :: evaluation_p
-		type(point), dimension(:), allocatable, intent(out) :: r_local
 
 		!dummy
 		real(dp ) :: dx_a, dx_b
@@ -195,94 +285,120 @@ module lib_sie_math
 				r_local((i-1)*n_a+j)%point=(/sin(theta)*cos(phi),  &
 						sin(theta)*sin(phi), cos(theta)/)*evaluation_p%dim_c
 			end do
-		else if (evaluation_type .eq. 'BRDF')then ! 
+		else if ((evaluation_type .eq. 'BRDF_n') .or. (evaluation_type .eq. 'BRDF_p')) then ! 
 			phi = evaluation_p%dim_b(1)
 			i = 1		
 			do j = 1, n_a
 				theta = evaluation_p%dim_a(1) + dx_a*(j-1)
 				r_local((i-1)*n_a+j)%point=(/sin(theta)*cos(phi),  &
-						sin(theta)*sin(phi), cos(theta)/)*evaluation_p%dim_c				
-			end do			
+						sin(theta)*sin(phi), cos(theta)/)*evaluation_p%dim_c
+			end do
 		end if				
 		return		
 	end subroutine get_evaluation_points
+	
+	subroutine get_evaluation_points_domain(evaluation_p, eps_r1, eps_r2, calculation_p, geometry_p, r_local)! 		
+		type(evaluation_r_media), dimension(:), allocatable, intent(out) :: r_local
+		complex(dp), intent(in) :: eps_r1, eps_r2
+		integer:: calculation_p(8)
+		type(lib_sie_evaluation_parameter_type), intent(in) :: evaluation_p
+		real(dp), dimension(:), intent(in) :: geometry_p(2)
 
-	!kd: wavevector
-	subroutine Gaussian_beam_focused(w0, r_local, E_00, kd)	
-		implicit none		
+		!dummy
+		real(dp ) :: dx_a, dx_b, ra(3)
+		real(dp) :: phi, theta, wg, hg, dummy
+		integer :: i, j, n_a, n_b, n_rs
+		real(dp), dimension(:), allocatable :: xx, ff
 		
-		real(dp), intent(in) :: r_local(3)
-		type(vector_c), intent(out) :: E_00
-		real(dp), intent(in) :: w0
-		complex(dp), intent(in) :: kd
+		n_a = evaluation_p%N_dim(1)
+		n_b = evaluation_p%N_dim(2)
+
+		allocate(r_local(n_a*n_b))
+		r_local%eps_r = eps_r1
+		r_local%media = 1
+		dx_a = (evaluation_p%dim_a(2) - evaluation_p%dim_a(1))/(n_a-1)
 		
-		!dummy		
-		real (dp) :: f0, f, theta_max, a, x_j
-		integer(kind = 4) :: m, nm, i, ngp!
-		real(dp), dimension(:), allocatable :: jn, djn, xx, ww
-		real(dp) :: c1, c2, rho, phi_r, fw, j0, j1, j2, c3
-		real(dp) :: E0, r_max, phi_m, z_max
-		real(dp) :: indx_2, n_a
-		
-		!dummy			
-		real(dp) :: r0(3) 
-		complex(dp) :: p1, p2, p3, I_00, I_01, I_02, trf, E_tmp(3)    
-				
-		ngp = 7
-		nm = 5
-		m = 3
-		r_max = 2e-6 !radius of the field to be calculated
-		phi_m = 2*PI
-		z_max = 5e-6 !half of the calculation range along the z-axis
-			
-		r0 = (/0.0, 0.0, 0.0/) !center position of the focused point		
-		E0 = 1.0
-		indx_2 = 1.0
-		n_a = 0.8
-		a = 0.0
-		theta_max = asin(n_a/indx_2)    
-		f = 30e-6
-		f0 = w0/(f*sin(theta_max))    
-		
-		allocate(jn(1:m))
-		allocate(djn(1:m))    
-		allocate(ww(1:ngp))
-		allocate(xx(1:ngp))
-		call legendre_handle(ngp, a, theta_max, xx, ww)
-		!Ex ploarized light focused onto z = 0
-		!Eq. (3.49 - 3.66) Novotny, n_ano-Optics
-		rho = sqrt((r_local(1) - r0(1))**2 + (r_local(2) - r0(2))**2)
-		if (rho .eq. 0.0) then
-			phi_r = 0.0
-		else 
-			phi_r = acos((r_local(1) - r0(1))/rho)		
+		if ((calculation_p(4) .ge. 4) .and. (calculation_p(4) .le. 7))then
+			dx_b = 0.0
+		else
+			dx_b = (evaluation_p%dim_b(2) - evaluation_p%dim_b(1))/(n_b-1)
 		end if
 		
-		I_01 = (0.0, 0.0)
-		I_02 = (0.0, 0.0)
-		I_00 = (0.0, 0.0)
-		do i = 1, ngp        
-			c1 = sin(xx(i))
-			c2 = cos(xx(i))
-			c3 = sin(theta_max)
-			fw = exp(-1/f0**2*(c1/C3)**2)             
-			x_j = c1*kd*rho
-			jn = lib_math_bessel_spherical_first_kind(x_j, 0, nm)
-			j0 = jn(1)
-			j1 = jn(3)
-			j2 = jn(3)              
-			trf = fw*sqrt(c2)*exp(im*kd*(r_local(3)-r0(3))*c2)*ww(i)
-			I_00 = I_00 + c1*(1 + c2)*trf*j0!
-			I_01 = I_01 + c1**2*j1*trf        
-			I_02 = I_02 + c1*(1-c2)*j2*trf
-		end do        
-		p1 = I_00 + I_02*cos(2*phi_r) 
-		p2 = I_02*sin(2*phi_r)
-		p3 = -2*im*I_01*cos(phi_r)
-		E_tmp = (/p1, p2, p3/) 
-		E_00%vector = im*kd*f/2*sqrt(1.0/indx_2)*E0*exp(-im*kd*f)*E_tmp
-		return
-	end subroutine Gaussian_beam_focused
+		if (calculation_p(4) .eq. 2)then ! xy-plot		
+			do i = 1, n_b
+				do j = 1, n_a
+					r_local((i-1)*n_a+j)%point= &
+					(/evaluation_p%dim_a(2) - dx_a*(j-1), evaluation_p%dim_b(2) - dx_b*(i-1), evaluation_p%dim_c/)
+				end do
+			end do
+		else if (calculation_p(4) .eq. 3)then ! yz-plot      !     
+			do i=1, n_b
+				do j=1, n_a
+					r_local((i-1)*n_a + j)%point=(/evaluation_p%dim_c, evaluation_p%dim_a(2) - dx_a*(j-1), &
+					evaluation_p%dim_b(2) - dx_b*(i-1) /)
+				end do
+			end do
+        
+		else if (calculation_p(4) .eq. 1)then ! xz-plot
+			if (calculation_p(5) .eq. 3)then !grating
+				wg = geometry_p(1)
+				hg = geometry_p(2)		
+				do i=1, n_b
+					do j=1, n_a
+						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_a(1) + dx_a*(j-1), evaluation_p%dim_c, &
+						evaluation_p%dim_b(1) + dx_b*(i-1)/)
+						ra = r_local((i-1)*n_a+j)%point					
+						if ((abs(ra(1)) .le. wg/2) .and. (ra(3) .le. 0.0)) then
+							r_local((i-1)*n_a+j)%eps_r = eps_r2
+							r_local((i-1)*n_a+j)%media = 2							
+						elseif ((abs(ra(1)) .ge. wg/2) .and. (ra(3) .le. -hg)) then
+							r_local((i-1)*n_a+j)%eps_r = eps_r2		
+							r_local((i-1)*n_a+j)%media = 2
+						end if
+					end do
+				end do
+			else if ((calculation_p(5) .eq. 1) .or. (calculation_p(5) .eq. 4)) then		!sphere	
+				do i=1, n_b
+					do j=1, n_a
+						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_a(1) + dx_a*(j-1), evaluation_p%dim_c, &
+						evaluation_p%dim_b(1) + dx_b*(i-1)/)
+						ra = r_local((i-1)*n_a+j)%point! - surface_center !attention: surface center at 0.0 is assumed. 
+						if (norm2(ra) .le. geometry_p(1)) then
+							r_local((i-1)*n_a+j)%eps_r = eps_r2
+							r_local((i-1)*n_a+j)%media = 2
+						end if
+					end do
+				end do			
+			else if (calculation_p(5) .eq. 2)then		!rough surface		
+				!The file 'f_boundary_rs.dat' is generated simultaneously when the rough surface is generated
+				open(unit = 115, file = 'f_boundary_rs.dat', status = 'old', action = 'read')
+				allocate(f_boundary_rs(n_a))
+				do i = 1, n_a
+					read(115, *) dummy, f_boundary_rs(i) 
+				end do
+				do j=1, n_a !the size of the surface is equal to the surface lengtgh, in x-direction
+					do i=1, n_b !z-direction
+						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_a(1) + dx_a*(j-1), evaluation_p%dim_c, &
+						evaluation_p%dim_b(1) + dx_b*(i-1)/)
+						ra = r_local((i-1)*n_a+j)%point					
+						if (ra(3) .ge. f_boundary_rs(j)) then						
+							r_local((i-1)*n_a+j)%eps_r = eps_r2
+							r_local((i-1)*n_a+j)%media = 2							
+						end if
+					end do
+				end do			
+			end if
+		else if ((calculation_p(4) .ge. 4) .or. (calculation_p(4) .le. 7))then ! 
+			phi = evaluation_p%dim_b(1)
+			i = 1		
+			do j = 1, n_a
+				theta = evaluation_p%dim_a(1) + dx_a*(j-1)
+				r_local((i-1)*n_a+j)%point=(/sin(theta)*cos(phi),  &				
+						sin(theta)*sin(phi), cos(theta)/)*evaluation_p%dim_c
+			end do		
+		end if			
+		return		
+	end subroutine get_evaluation_points_domain
 	
 	function cross_r(v1,v2)!result(rv)
 		! Function returning the cross product of
@@ -405,7 +521,7 @@ module lib_sie_math
 		end if
 		
 		IF( INFO.GT.0 ) THEN
-         WRITE(*,*)'The diagonal element of the triangular factor of A,'
+         WRITE(*,*)'The diagon_al element of the triangular factor of A,'
          WRITE(*,*)'U(',INFO,',',INFO,') is zero, so that'
          WRITE(*,*)'A is singular; the solution could not be computed.'
          STOP
@@ -422,12 +538,14 @@ module lib_sie_math
 		
 		LOGICAL, DIMENSION(v_size) :: mk
 		mk  = .TRUE.
+		!vector = (/1, 3, 5, 4, 2, 8, 10, 9, 7, 6/)		 
 		DO i = 1, v_size
 			tmp(i) = MINVAL(vector,mk)
 			mk(MINLOC(vector,mk)) = .FALSE.
 		END DO
 		v_ascendente = tmp 
-		return		
+		return
+		!print*, 'v_ascendente =', v_ascendente
 	end subroutine
-	
+
 end module lib_sie_math

@@ -13,13 +13,13 @@
 !    GNU General Public License for more details.!
 ! 
 ! @author: Liwei Fu
-! part of the code is from AAS, RUNE ØISTEIN's master thesis
+! several code lines are from AAS, RUNE ØISTEIN's master thesis
 ! “Electromagnetic Scattering: ” Norwegian University of Science and Technology, 2012
 !  https://ntnuopen.ntnu.no/ntnu-xmlui/handle/11250/246792
 	
 module lib_sie_tri_calculation_mod
 	
-	use libmath
+	!use libmath
 	use lib_sie_math	
 	use lib_sie_constants
 	use lib_sie_data_container
@@ -35,6 +35,7 @@ module lib_sie_tri_calculation_mod
 	public :: fn_parameter
 	public :: fn_edge_center
 	public :: Integration_scattered_field_tri
+	public :: Integration_scattered_field_tri_within_medium
 	public :: normal_integration_new	
 	public :: quadrature_tri
 	public :: vec_len
@@ -43,13 +44,11 @@ module lib_sie_tri_calculation_mod
 	public :: get_vector_b_tri
 	public :: lib_sie_tri_get_impedance_edges
 	public :: singular_integration_new
-	public :: recursive_triangulation
-	public :: fn_parameter_type_shifted_sphere
+	public :: recursive_triangulation	
 	public :: lib_sie_tri_input_field_calculation
 	public :: precalculation_fn
 	public :: data_import_tri
-	
-	
+
 	!test functions
 	!public :: test_Iq_L	
 	!public :: test_K3q
@@ -59,8 +58,8 @@ module lib_sie_tri_calculation_mod
 	
 	subroutine data_import_tri()    !
       implicit none
-      integer :: j,  p, m, q, s
-		character(len = 50) :: file_name
+      integer :: j,  p, m, q, s	
+		character(len = 30) :: file_name
 		
 		allocate(ne_arr(number_objects))
 		
@@ -137,7 +136,7 @@ module lib_sie_tri_calculation_mod
 					do m = 1, ne_arr(j)
 						allocate(struc_tri%elements(m)%corners(3))
 						struc_tri%elements(m)%corners = struc_tri_spheres(j)%elements(m)%corners
-						struc_tri%midpoint(m)%point = struc_tri_spheres(j)%midpoint(m)%point + tri_sp_parameters(j)%centroid%point					
+						struc_tri%midpoint(m)%point = struc_tri_spheres(j)%midpoint(m)%point + tri_sp_parameters(j)%centroid%point	
 					end do
 				else
 					p = p + ne_arr(j-1)						
@@ -145,7 +144,7 @@ module lib_sie_tri_calculation_mod
 					do m = 1, ne_arr(j)
 						allocate(struc_tri%elements(m + p)%corners(3))
 						struc_tri%elements(m + p)%corners = struc_tri_spheres(j)%elements(m)%corners + q
-						struc_tri%midpoint(m + p)%point = struc_tri_spheres(j)%midpoint(m)%point + tri_sp_parameters(j)%centroid%point						
+						struc_tri%midpoint(m + p)%point = struc_tri_spheres(j)%midpoint(m)%point + tri_sp_parameters(j)%centroid%point	
 					end do
 				end if	
 			end do
@@ -164,17 +163,17 @@ module lib_sie_tri_calculation_mod
 				end if	
 			end do
 			
-			!write( n_discretization, '(i30)' )  tri_sp_parameters(1)%n_disc						
-			!file_name = 'tt_sphere_n16386.txt'
-			!!print*, 'file_name =', file_name
-   
+			! save the meshed data from a sphere
+			!file_name = 'tt_sphere_n258.txt'
+			!!!!print*, 'file_name =', file_name
+   !!
 			!open (unit=206, file = file_name, action="write",status = 'replace')
 			!	do j = 1, sum(ne_arr)
 			!		write (206, '(201(i10, tr5))') struc_tri%elements(j)%corners
 			!	end do
 			!close(206)
    !
-			!file_name = 'pp_sphere_n16386.txt'
+			!file_name = 'pp_sphere_n258.txt'
 			!
 			!open (unit=206, file = file_name, action="write",status = 'replace')			
 			!	do j = 1, sum(np_arr)
@@ -223,22 +222,32 @@ module lib_sie_tri_calculation_mod
 			s = 0
 			do j = 1, number_objects
 				if (j .eq. 1) then
+					!$omp parallel private (m) &  
+					!$omp shared (struc_tri, struc_tri_surfaces, j) !
+					!$omp do
 					do m = 1, m_pairs_arr(j)							
 						struc_tri%neighbours(m)%corner = struc_tri_surfaces(j)%neighbours(m)%corner														
 						struc_tri%neighbours(m)%element = struc_tri_surfaces(j)%neighbours(m)%element					
-						struc_tri%midpoint_edge(m)%point = struc_tri_surfaces(j)%midpoint_edge(m)%point + &
-							tri_sf_parameters(j)%centroid%point
+						struc_tri%midpoint_edge(m)%point = struc_tri_surfaces(j)%midpoint_edge(m)%point !+ &
+							!tri_sf_parameters(j)%centroid%point
 					end do
+					!$omp end do
+					!$omp end parallel  
 				else
 					p = p + m_pairs_arr(j-1)
 					q = q + np_arr(j-1)
 					s = s + ne_arr(j-1)
+					!$omp parallel private (m) &  
+					!$omp shared (struc_tri, struc_tri_surfaces, tri_sf_parameters, j, p, q, s) !
+					!$omp do
 					do m = 1, m_pairs_arr(j)
 						struc_tri%neighbours(m + p)%corner = struc_tri_surfaces(j)%neighbours(m)%corner + q
 						struc_tri%neighbours(m + p)%element = struc_tri_surfaces(j)%neighbours(m)%element + s	
 						struc_tri%midpoint_edge(m + p)%point = struc_tri_surfaces(j)%midpoint_edge(m)%point + &
 							tri_sf_parameters(j)%centroid%point
 					end do
+					!$omp end do
+					!$omp end parallel  					
 				end if					
 			end do
 			
@@ -246,35 +255,56 @@ module lib_sie_tri_calculation_mod
 			q = 0
 			do j = 1, number_objects
 				if (j .eq. 1) then
+					!$omp parallel private (m) &  
+					!$omp shared (struc_tri, ne_arr, struc_tri_surfaces, j) !
+					!$omp do				
 					do m = 1, ne_arr(j)
 						allocate(struc_tri%elements(m)%corners(3))
 						struc_tri%elements(m)%corners = struc_tri_surfaces(j)%elements(m)%corners
-						struc_tri%midpoint(m)%point = struc_tri_surfaces(j)%midpoint(m)%point + &
-							tri_sf_parameters(j)%centroid%point					
+						struc_tri%midpoint(m)%point = struc_tri_surfaces(j)%midpoint(m)%point !+ &
+							!tri_sf_parameters(j)%centroid%point					
 					end do
+					!$omp end do
+					!$omp end parallel  							
 				else
 					p = p + ne_arr(j-1)						
 					q = q + np_arr(j-1)
+					!$omp parallel private (m) &  
+					!$omp shared (struc_tri, struc_tri_surfaces, tri_sf_parameters, j, p, q) !
+					!$omp do
+					
 					do m = 1, ne_arr(j)
 						allocate(struc_tri%elements(m + p)%corners(3))
 						struc_tri%elements(m + p)%corners = struc_tri_surfaces(j)%elements(m)%corners + q
 						struc_tri%midpoint(m + p)%point = struc_tri_surfaces(j)%midpoint(m)%point + &
 							tri_sf_parameters(j)%centroid%point
 					end do
+					!$omp end do
+					!$omp end parallel  								
 				end if	
 			end do
 			!--------------
 			p = 0	
-			do j = 1, number_objects
+			do j = 1, number_objects			
 				if (j .eq. 1) then
+					!$omp parallel private (m) &  
+					!$omp shared (struc_tri, struc_tri_surfaces, np_arr) !
+					!$omp do								
 					do m = 1, np_arr(j)
-						struc_tri%points(m)%point = struc_tri_surfaces(j)%points(m)%point + tri_sf_parameters(j)%centroid%point
+						struc_tri%points(m)%point = struc_tri_surfaces(j)%points(m)%point! + tri_sf_parameters(j)%centroid%point
 					end do
+					!$omp end do
+					!$omp end parallel 					
 				else
 					p = p + ne_arr(j-1)
+					!$omp parallel private (m) &  
+					!$omp shared (j, p, struc_tri, tri_sf_parameters, struc_tri_surfaces, np_arr) !
+					!$omp do
 					do m = 1, np_arr(j)
 						struc_tri%points(m + p)%point = struc_tri_surfaces(j)%points(m)%point + tri_sf_parameters(j)%centroid%point
 					end do
+					!$omp end do
+					!$omp end parallel					
 				end if	
 			end do  				
 				
@@ -295,34 +325,52 @@ module lib_sie_tri_calculation_mod
 		end if
 		
 		allocate(structure_edges(m_pairs))
-		if (pre_types%object .eq. 'sphere') then		
+		if (calc_p(5) .eq. 1) then		
 			p = 0
 			do j = 1, number_objects
 				if (j .eq. 1)then
 					do m = 1, m_pairs_arr(j)
-						do ot = 1, 2						
-							call fn_parameter_type_shifted_sphere(struct, m, ot, tri_sp_parameters(j)%centroid%point, fn)					
+						do ot = 1, 2							
+							call fn_parameter_type_sphere(struct, m, ot, tri_sp_parameters(j)%centroid%point, fn)
 							structure_edges(m)%fn_ot(ot)%fn = fn	
 						end do			
 					end do
 				else 
 					p = p + m_pairs_arr(j-1)
 					do m = 1, m_pairs_arr(j)						
-						do ot = 1, 2		
-							call fn_parameter_type_shifted_sphere(struct, m+p, ot, tri_sp_parameters(j)%centroid%point, fn)					
+						do ot = 1, 2
+							call fn_parameter_type_sphere(struct, m+p, ot, tri_sp_parameters(j)%centroid%point, fn)					
 							structure_edges(m+p)%fn_ot(ot)%fn = fn	
 						end do			
 					end do
 				end if
-			end do
-		else
+			end do		
+		else if ((calc_p(5) .eq. 3) .or. (calc_p(5) .eq. 4))then
 			do m = 1, m_pairs
-				do ot = 1, 2				
-					call fn_parameter_type(struct, m, ot, fn)					
+				do ot = 1, 2
+					!tri_sf_parameters(1) is hard coded for test, has to be changed for multiple surface files. 
+					if (number_objects .eq. 1) then 
+						call fn_parameter_type(struct, m, ot, tri_sf_parameters(1)%centroid%point, fn) 
+					else 
+						print*, 'Not implemented for multiple surfaces yet'
+					end if
 					structure_edges(m)%fn_ot(ot)%fn = fn	
 				end do			
 			end do
-		end if 
+		else if (calc_p(5) .eq. 2)then
+			do m = 1, m_pairs
+				do ot = 1, 2
+					!tri_sf_parameters(1) is hard coded for test, has to be changed. 
+					if (number_objects .eq. 1) then 
+						call fn_parameter_type_sphere(struct, m, ot, tri_sf_parameters(1)%centroid%point, fn) 
+					else 
+						print*, 'Not implemented for multiple surfaces yet'
+					end if
+					structure_edges(m)%fn_ot(ot)%fn = fn	
+				end do			
+			end do				
+		end if 		
+		
 	end subroutine 
 	
 	
@@ -578,18 +626,18 @@ module lib_sie_tri_calculation_mod
 			end select
 		end function
 	
-	subroutine recursive_triangulation(struct, n_disc, R_factor)
+	subroutine recursive_triangulation(struct, n_discr, R_factor)
      ! Creating symmetric triangular discretization recursively
      ! n=6,18,58,258,1026, ...
       type(structure_tri), intent(inout) :: struct
-      integer :: n_disc, i, ne, np_curr, ne_curr, lim!, split_num
+      integer :: n_discr, i, ne, np_curr, ne_curr, lim!, split_num
       real(dp) :: R_factor
 
-      print *, 'Creating discretization recursively with #points = ', n_disc
+      print *, 'Creating discretization recursively with #points = ', n_discr
 		if (allocated(struct%points))then
 			deallocate(struct%points)
 		end if
-      allocate(struct%points(n_disc))
+      allocate(struct%points(n_discr))
 		
       struct%points(1)%point=(/ 1.0, 0.0, 0.0 /)*R_factor
       struct%points(2)%point=(/-1.0, 0.0, 0.0 /)*R_factor
@@ -598,7 +646,7 @@ module lib_sie_tri_calculation_mod
       struct%points(5)%point=(/ 0.0, 0.0, 1.0 /)*R_factor
       struct%points(6)%point=(/ 0.0, 0.0,-1.0 /)*R_factor
 
-      ne=2*(n_disc-2) !int(8*4**(split_num-1))
+      ne=2*(n_discr-2) !int(8*4**(split_num-1))
 		
 		if (allocated(struct%elements))then
 			deallocate(struct%elements)
@@ -887,62 +935,81 @@ module lib_sie_tri_calculation_mod
 		call Quadrature_tri(ngp, a, b, w)
 
 		Sum_EH(1:4) = (/(0.0, 0.0),  (0.0, 0.0), (0.0, 0.0), (0.0, 0.0)/)
-		do ot = 1, 2	
-			fm = structure_edges(m)%fn_ot(ot)%fn
-			do i = 1, ngp
-				R_a = r_simplex_new(a(i), b(i), fm%corners)
-				r_fm = (R_a - fm%corners(3)%point)*fm%df*0.5
-				if (pre_types%illumination == 'Gaussian' .or. pre_types%illumination == 'gaussian') then				
+		if (pre_types%illumination == 'Gaussian')  then
+			do ot = 1, 2	
+				fm = structure_edges(m)%fn_ot(ot)%fn
+				do i = 1, ngp				
+					R_a = r_simplex_new(a(i), b(i), fm%corners)
+					r_fm = (R_a - fm%corners(3)%point)*fm%df*0.5
 					call Gaussian_beam(beam_waist, R_a, illumination_p, Ec_in, k1)
-				else if ((pre_types%illumination == 'Plane') .or. (pre_types%illumination == 'plane')) then
+					Hc_in%vector = cross_c(k_hat, Ec_in%vector)/(my_1*c0)
+					Sum_EH(1) = Sum_EH(1) + dot_product(r_fm, Ec_in%vector)*w(i)*fm%area!
+					Sum_EH(2) = Sum_EH(2) + dot_product(r_fm, Hc_in%vector)*w(i)*fm%area!
+					Sum_EH(3) = Sum_EH(3) + dot_product(r_fm, cross_rc(fm%nq, Ec_in%vector))*w(i)*fm%area!
+					Sum_EH(4) = Sum_EH(4) + dot_product(r_fm, cross_rc(fm%nq, Hc_in%vector))*w(i)*fm%area!
+				end do !loop i		
+			end do
+		else if (pre_types%illumination == 'Plane') then
+			do ot = 1, 2	
+				fm = structure_edges(m)%fn_ot(ot)%fn
+				do i = 1, ngp				
+					R_a = r_simplex_new(a(i), b(i), fm%corners)
+					r_fm = (R_a - fm%corners(3)%point)*fm%df*0.5
 					Ec_in%vector = illumination_p%E_in*exp(-im*dot_product(k1*illumination_p%k_in, R_a))	
-				else if ((pre_types%illumination == 'Focused') .or. (pre_types%illumination == 'focused')) then
-					call Gaussian_beam_focused(beam_waist, R_a, Ec_in, k1)
-				else
-				end if
-				Hc_in%vector = cross_c(k_hat, Ec_in%vector)/(my_1*c0)
-				Sum_EH(1) = Sum_EH(1) + dot_product(r_fm, Ec_in%vector)*w(i)*fm%area!
-				Sum_EH(2) = Sum_EH(2) + dot_product(r_fm, Hc_in%vector)*w(i)*fm%area!
-				Sum_EH(3) = Sum_EH(3) + dot_product(r_fm, cross_rc(fm%nq, Ec_in%vector))*w(i)*fm%area!
-				Sum_EH(4) = Sum_EH(4) + dot_product(r_fm, cross_rc(fm%nq, Hc_in%vector))*w(i)*fm%area!
-			end do !loop i		
-		end do
+					Hc_in%vector = cross_c(k_hat, Ec_in%vector)/(my_1*c0)
+					Sum_EH(1) = Sum_EH(1) + dot_product(r_fm, Ec_in%vector)*w(i)*fm%area!
+					Sum_EH(2) = Sum_EH(2) + dot_product(r_fm, Hc_in%vector)*w(i)*fm%area!
+					Sum_EH(3) = Sum_EH(3) + dot_product(r_fm, cross_rc(fm%nq, Ec_in%vector))*w(i)*fm%area!
+					Sum_EH(4) = Sum_EH(4) + dot_product(r_fm, cross_rc(fm%nq, Hc_in%vector))*w(i)*fm%area!
+				end do !loop i		
+			end do
+			
+		else if (pre_types%illumination == 'Conical') then
+			do ot = 1, 2	
+				fm = structure_edges(m)%fn_ot(ot)%fn
+				do i = 1, ngp				
+					R_a = r_simplex_new(a(i), b(i), fm%corners)
+					r_fm = (R_a - fm%corners(3)%point)*fm%df*0.5				
+					call conical_illumination(p_obj, R_a, illumination_p, Ec_in)				
+					Hc_in%vector = cross_c(k_hat, Ec_in%vector)/(my_1*c0)
+					Sum_EH(1) = Sum_EH(1) + dot_product(r_fm, Ec_in%vector)*w(i)*fm%area!
+					Sum_EH(2) = Sum_EH(2) + dot_product(r_fm, Hc_in%vector)*w(i)*fm%area!
+					Sum_EH(3) = Sum_EH(3) + dot_product(r_fm, cross_rc(fm%nq, Ec_in%vector))*w(i)*fm%area!
+					Sum_EH(4) = Sum_EH(4) + dot_product(r_fm, cross_rc(fm%nq, Hc_in%vector))*w(i)*fm%area!
+				end do !loop i		
+			end do
+		end if
 		return
 	end subroutine incident_field_tri_general 
-
-	function norm_vec_r(corner_fn, mid)
-	 ! Function returning the normal vector
+	
+	! Normal vector calculation, the original one	
+	function norm_vec_r_sphere(corner_fn, mid, center)!result(norm_vec_r)
+	 ! Function returning the normal vector of the spheres meshed using triangulation.
 	 ! (zero imaginary part) of a discretization element
 	 ! pointing outwards from the origin when p1,p2,p3 are
 	 ! corners of the element.
 		type(point), intent(in) :: corner_fn(3)
-		real(dp), intent(in) :: mid(3)
-		
-		real(dp) :: norm_vec_r(3)
-		real(dp) :: v1(3), v2(3)
-		!logical :: correct_way
+		real(dp), intent(in) :: mid(3), center(3)		
+		real(dp) :: norm_vec_r_sphere(3)
+		real(dp) :: v1(3), v2(3), vc(3)		
 		integer :: i
 		
 		v1 = corner_fn(1)%point-corner_fn(2)%point
-		v2 = corner_fn(3)%point-corner_fn(2)%point
-		norm_vec_r = cross_r(v1,v2)/vec_len(cross_r(v1,v2))
-		!correct_way=.true.
-		do i=1,3
-			if (mid(i)*norm_vec_r(i)<0)then
-				if ((norm_vec_r(i)>0.1 .or. norm_vec_r(i)<-0.1) )then 
-						norm_vec_r=-1.0*norm_vec_r
-						!correct_way=.false.
-						!print *,'wrong way:', norm_vec_r, 'mid:', mid
-				end if
-			end if
-		end do
-			!if (correct_way.eqv. .false.)then
-			!	norm_vec_r=-1.0*norm_vec_r
-			!end if		
+		v2 = corner_fn(3)%point-corner_fn(2)%point		
+		norm_vec_r_sphere = cross_r(v1,v2)/vec_len(cross_r(v1,v2))
+		vc = mid - center !vector of centroid to surface
+			!do i=1,3
+			!	if (vc(i)*norm_vec_r_sphere(i)<0)then
+			!		if ((norm_vec_r_sphere(i)>0.1 .or. norm_vec_r_sphere(i)<-0.1)) then 
+			!			norm_vec_r_sphere=-1.0*norm_vec_r_sphere						
+			!			!print *,'wrong way:', norm_vec_r, 'mid:', mid
+			!		end if
+			!	end if
+			!end do
 		return
 	end function
 	
-	function norm_vec_r_shifted_sphere(corner_fn, mid, center)result(norm_vec_r)
+	function norm_vec_r(corner_fn, mid, center)!result(norm_vec_r)
 	 ! Function returning the normal vector
 	 ! (zero imaginary part) of a discretization element
 	 ! pointing outwards from the origin when p1,p2,p3 are
@@ -955,18 +1022,10 @@ module lib_sie_tri_calculation_mod
 		
 		integer :: i
 		
-		v1 = corner_fn(1)%point-corner_fn(2)%point
-		v2 = corner_fn(3)%point-corner_fn(2)%point
+		v1 = corner_fn(3)%point-corner_fn(1)%point
+		v2 = corner_fn(2)%point-corner_fn(1)%point		
 		norm_vec_r = cross_r(v1,v2)/vec_len(cross_r(v1,v2))
-		vc = mid - center !vector of centroid to surface
-			do i=1,3
-				if (vc(i)*norm_vec_r(i)<0)then
-					if ((norm_vec_r(i)>0.1 .or. norm_vec_r(i)<-0.1) )then 
-						norm_vec_r=-1.0*norm_vec_r						
-						!print *,'wrong way:', norm_vec_r, 'mid:', mid
-					end if
-				end if
-			end do
+		
 		return
 	end function
 	 
@@ -1411,53 +1470,8 @@ module lib_sie_tri_calculation_mod
 			return
     end subroutine fn_parameter
 	 
-	subroutine fn_parameter_type(struct, m, ot, fn)
-      implicit none
-		type(structure_tri), intent(in) :: struct
-		integer, intent(in) :: m, ot
-      real(dp), dimension(3) :: p1, p2, pc !, intent(out)
-      real(dp) :: lng, area
-      integer :: j, nv, p
-		type(Pair) :: pair_p
-		type(fn_rwg), intent(out) :: fn
 		
-      pair_p = struct%neighbours(m)
-      do j = 1, 3                
-         if (struct%elements(pair_p%element(ot))%corners(j) &
-               /= pair_p%corner(1) &
-               .and. struct%elements(pair_p%element(ot))%corners(j) &
-               /= pair_p%corner(2))then
-               pc(1:3)=struct%points(struct%elements(pair_p%element(ot))&
-               %corners(j))%point ! vertex of the triangle
-			nv = j
-         end if
-      end do
-		p = struct%neighbours(m)%element(ot) !element index
-		if (nv == 1) then		
-			p1 = struct%points(struct%elements(p)%corners(2))%point
-			p2 = struct%points(struct%elements(p)%corners(3))%point
-		else if (nv == 2) then
-			p1 = struct%points(struct%elements(p)%corners(3))%point
-			p2 = struct%points(struct%elements(p)%corners(1))%point
-		else 
-			p1 = struct%points(struct%elements(p)%corners(1))%point
-			p2 = struct%points(struct%elements(p)%corners(2))%point
-		end if		
-			lng = vec_len(p1-p2)
-			area = 0.5*vec_len(cross_r((p1-pc), (p2-pc))) 
-			fn%corners(1)%point = p1
-			fn%corners(2)%point = p2
-			fn%corners(3)%point = pc
-			fn%area = area
-			fn%length = lng
-			fn%sign = -1*(((ot-1)*ot)-1)
-			fn%df = fn%sign*lng/area!
-			fn%mid = struct%midpoint(p)%point
-			fn%nq = norm_vec_r(fn%corners, fn%mid)
-			return
-    end subroutine fn_parameter_type
-	 
-	subroutine fn_parameter_type_shifted_sphere(struct, m, ot, center, fn)
+	subroutine fn_parameter_type_sphere(struct, m, ot, center, fn)
       implicit none
 		type(structure_tri), intent(in) :: struct
 		integer, intent(in) :: m, ot
@@ -1501,11 +1515,60 @@ module lib_sie_tri_calculation_mod
 			fn%length = lng
 			fn%sign = -1*(((ot-1)*ot)-1)
 			fn%df = fn%sign*lng/area!
-			fn%mid = struct%midpoint(p)%point
-			fn%nq = norm_vec_r_shifted_sphere(fn%corners, fn%mid, center)
-			return
-    end subroutine fn_parameter_type_shifted_sphere
+			fn%mid = struct%midpoint(p)%point					
+			fn%nq = norm_vec_r_sphere(fn%corners, fn%mid, center)
+			return    
+	 end subroutine fn_parameter_type_sphere
 	 
+	subroutine fn_parameter_type(struct, m, ot, center, fn)
+      implicit none
+		type(structure_tri), intent(in) :: struct
+		integer, intent(in) :: m, ot
+		real(dp), intent(in) :: center(3) !centroid of the sphere or any ojbect
+		
+      real(dp), dimension(3) :: p1, p2, pc !, intent(out)
+      real(dp) :: lng, area
+      integer :: j, nv, p
+		type(Pair) :: pair_p
+		type(fn_rwg), intent(out) :: fn
+		
+      pair_p = struct%neighbours(m)
+      do j = 1, 3
+         if (struct%elements(pair_p%element(ot))%corners(j) &
+               /= pair_p%corner(1) &
+               .and. struct%elements(pair_p%element(ot))%corners(j) &
+               /= pair_p%corner(2))then
+               pc(1:3)=struct%points(struct%elements(pair_p%element(ot))&
+               %corners(j))%point ! vertex of the triangle
+			nv = j
+         end if
+      end do
+		
+		p = struct%neighbours(m)%element(ot) !element index
+		if (nv == 1) then		
+			p1 = struct%points(struct%elements(p)%corners(2))%point
+			p2 = struct%points(struct%elements(p)%corners(3))%point
+		else if (nv == 2) then
+			p1 = struct%points(struct%elements(p)%corners(3))%point
+			p2 = struct%points(struct%elements(p)%corners(1))%point
+		else 
+			p1 = struct%points(struct%elements(p)%corners(1))%point
+			p2 = struct%points(struct%elements(p)%corners(2))%point
+		end if		
+			lng = vec_len(p1-p2)
+			area = 0.5*vec_len(cross_r((p1-pc), (p2-pc))) 
+			fn%corners(1)%point = p1
+			fn%corners(2)%point = p2
+			fn%corners(3)%point = pc
+			fn%area = area
+			fn%length = lng
+			fn%sign = -1*(((ot-1)*ot)-1)
+			fn%df = fn%sign*lng/area!
+			fn%mid = struct%midpoint(p)%point					
+			fn%nq = norm_vec_r(fn%corners, fn%mid, center)
+			return    
+	 end subroutine fn_parameter_type
+		 
 	 subroutine test_address_csr_element()
 		integer, dimension(:), allocatable :: b_csr, ia, ja
 		integer :: i, j, b
@@ -2445,8 +2508,6 @@ module lib_sie_tri_calculation_mod
 			call singular_integration_edge_adjacent_ngp(  fm, fn, suma_tmp)
 			suma = suma_tmp
 			
-			!An error exits 
-			!call singular_integration_edge_adjacent(fm, fn, ngp, Iqs_L, suma_tmp)	
 			sumb = sumb_s + sumb_sin
 			sumc = sumc_s + sumc_sin
 		else 
@@ -2484,49 +2545,63 @@ module lib_sie_tri_calculation_mod
 		!print*, 'counter =', counter
 	end subroutine edge_adjacent_tri
 	
-	function lib_sie_tri_input_field_calculation(r_local)result(field_input)	
+	subroutine lib_sie_tri_input_field_calculation(field_input)!result()	
 		implicit none
 		
-		type(point), dimension(:), allocatable, intent(in) :: r_local
-		type(lib_sie_evaluation_point_type), dimension(:), allocatable :: field_input		
-	
-		!dummy
 		integer :: n1, n2, m, ngp!
 		
+		real(dp) :: r_local_tmp(3), I_00 
+		type(vector_c) :: E_00
+		
+		type(lib_sie_evaluation_point_type), dimension(:), allocatable, intent(out) :: field_input		
+	
 		n1 = evaluation_parameter%N_dim(1)
 		n2 = evaluation_parameter%N_dim(2)
 		
 		allocate(field_input(n1*n2))
-		
-		do m = 1, n1*n2			
-			if (pre_types%illumination == 'Gaussian')then
-				call Gaussian_beam(beam_waist, r_local(m)%point, illumination_p, field_input(m)%e_field, k1)
-			else if ((pre_types%illumination == 'Focused') .or. (pre_types%illumination == 'focused'))then
-				call Gaussian_beam_focused(beam_waist, r_local(m)%point, field_input(m)%e_field, k1)	
-			else if ((pre_types%illumination == 'Plane') .or. (pre_types%illumination == 'plane'))then
-				field_input(m)%e_field%vector = illumination_p%E_in*exp(-im*dot_product(k1*illumination_p%k_in, r_local(m)%point))				
-			else 
-				print*, 'Not a proper illumination method'
-				call exit
-			end if
-			ngp = ngp_near_field_distance_tri(r_local(m), nearfield_distance)
-			Field_input(m)%h_field%vector = cross_c(k1*illumination_p%k_in, Field_input(m)%e_field%vector)/(my_1*c0)
-			field_input(m)%coordinate = r_local(m)
-			field_input(m)%ngp = ngp
-		end do
+	
+		if (pre_types%illumination == 'Gaussian') then
+			do m = 1, n1*n2	
+				call Gaussian_beam(beam_waist, r_media(m)%point, illumination_p, field_input(m)%e_field, k1)				
+				field_input(m)%h_field%vector = cross_c(k1*illumination_p%k_in, field_input(m)%e_field%vector)/(my_1*c0)
+				ngp = ngp_near_field_distance_tri(r_media(m)%point, nearfield_distance)
+				r_media(m)%ngp = ngp
+			end do
+		else if (pre_types%illumination == 'Conical') then
+			do m = 1, n1*n2
+				call conical_illumination(p_obj, r_media(m)%point, illumination_p, field_input(m)%e_field)	
+				ngp = ngp_near_field_distance_tri(r_media(m)%point, nearfield_distance)
+				r_media(m)%ngp = ngp
+				field_input(m)%h_field%vector = cross_c(k1*illumination_p%k_in, Field_input(m)%e_field%vector)/(my_1*c0)
+			end do			
+		else if (pre_types%illumination == 'Plane')then
+			do m = 1, n1*n2
+				field_input(m)%e_field%vector = illumination_p%E_in*exp(-im*dot_product(k1*illumination_p%k_in, r_media(m)%point))
+				ngp = ngp_near_field_distance_tri(r_media(m)%point, nearfield_distance)
+				Field_input(m)%h_field%vector = cross_c(k1*illumination_p%k_in, Field_input(m)%e_field%vector)/(my_1*c0)
+				r_media(m)%ngp = ngp
+			end do
+		else 
+			print*, 'Not a proper illumination method'
+			call exit
+		end if
+			
+		!deallocate(r_local)
 		return
-	end function
+	end subroutine
 	
 	function ngp_near_field_distance_tri(r_loc, distance_nf)result(ngp)
 		integer :: ngp
-		integer :: p, ngp_arr(number_objects)
-		type(point) :: r_loc
+		integer :: p, ngp_arr(number_objects)		
+		real(dp) :: r_loc(3)
 		real(dp), dimension(2), intent(in) :: distance_nf
 		real(dp) :: tmp_r		
 		
-		if (pre_types%object .eq. 'sphere')then
+		!calc_p(5) = 4, 1
+		!if (pre_types%object .eq. 'sphere')then
+		if (calc_p(5) .eq. 1)then !sphere from SpeckleSim
 			do p = 1, number_objects
-				tmp_r = (vec_len(r_loc%point - tri_sp_parameters(p)%centroid%point) - tri_sp_parameters(p)%D*0.5)		
+				tmp_r = (vec_len(r_loc - tri_sp_parameters(p)%centroid%point) - tri_sp_parameters(p)%D*0.5)		
 				if ((tmp_r .le. distance_nf(1)) .and. (tmp_r .gt. 0.0) ) then
 					ngp_arr(p) = 12
 				else if ((tmp_r .le. distance_nf(2)) .and. (tmp_r .gt. distance_nf(1))) then
@@ -2534,17 +2609,31 @@ module lib_sie_tri_calculation_mod
 				else if (tmp_r .gt. distance_nf(2)) then				
 					ngp_arr(p) = 3
 				else 
-					ngp_arr(p) = 50
+					ngp_arr(p) = 6
 				end if
 				ngp = maxval(ngp_arr)
 			end do
-		else if (pre_types%object .eq. 'surface')then
+		else if (calc_p(5) .eq. 4)then !sphere from COMSOL			
+				p=1
+				tmp_r = (vec_len(r_loc - tri_sf_parameters(p)%centroid%point) - tri_sf_parameters(p)%D(1)*0.5)
+				if ((tmp_r .le. distance_nf(1)) .and. (tmp_r .gt. 0.0) ) then
+					ngp_arr(p) = 12
+				else if ((tmp_r .le. distance_nf(2)) .and. (tmp_r .gt. distance_nf(1))) then
+					ngp_arr(p) = 6
+				else if (tmp_r .gt. distance_nf(2)) then				
+					ngp_arr(p) = 3
+				else 
+					ngp_arr(p) = 6
+					print*, 'ngp=6', ngp_arr(p)
+				end if
+				ngp = maxval(ngp_arr)			
+		!else if (pre_types%object .eq. 'surface')then		
+		else if ((calc_p(5) .eq. 2) .or. (calc_p(5) .eq. 3))then			
 			ngp = 3
 		else
 			print*, 'not a properly defined object type'
-			ngp = 50
-		end if
-		!print*, 'ngp =', ngp
+			ngp = 6
+		end if		
 		return
 	end function
 	
@@ -2658,7 +2747,7 @@ module lib_sie_tri_calculation_mod
 	!Calculation of the scattered fields!
 	subroutine Integration_scattered_field_tri(r_a, struct, ngp, SEH, Sum_a)
       complex(dp), dimension(:), intent(in) ::  SEH        
-      type(point), intent(in) :: r_a
+      real(dp), intent(in) :: r_a(3)
 		type(structure_tri), intent(in) :: struct
 		integer, intent(in) :: ngp
 		
@@ -2684,9 +2773,9 @@ module lib_sie_tri_calculation_mod
 				do i = 1, ngp
 					r_q = r_simplex(a(i), b(i), p1, p2, vm_t)
 					f_mat=0.5*dfm*(r_q-vm_t) !*area_m
-					R_norm = vec_len(r_a%point - r_q)
+					R_norm = vec_len(r_a - r_q)
 					call Diver_Green(k1, R_norm, Greenf, DG_SS)
-					GradG = (r_a%point - r_q)/R_norm*DG_SS					
+					GradG = (r_a - r_q)/R_norm*DG_SS					
 					K_tmp = im*Omega*my_1*SEH(m)*f_mat*Greenf - &
 						cross_c(SEH(m+m_pairs)*f_mat, GradG) - 1/(im*Omega*eps_1)*SEH(m)*dfm*GradG	
 					Sum_a(1)%Vector = Sum_a(1)%Vector - K_tmp*w(i)!TRF				
@@ -2698,5 +2787,52 @@ module lib_sie_tri_calculation_mod
 		end do
       return
 	end subroutine Integration_scattered_field_tri	
+	
+subroutine Integration_scattered_field_tri_within_medium(r_a, struct, ngp, SEH, Sum_a)
+      complex(dp), dimension(:), intent(in) ::  SEH 
+      !type(point), intent(in) :: r_a
+		type(structure_tri), intent(in) :: struct
+		integer, intent(in) :: ngp
+		type(evaluation_r_media), intent(in):: r_a
+      type(Vector_c), dimension(2), intent(out) :: Sum_a
+		
+      integer i, t, pos_neg, m
+      real(dp) :: R_norm, Len_m, area_m, dfm 
+		complex(dp) :: GradG(3), K_tmp(3), Greenf, DG_SS, f_mat(3)
+		complex(dp) :: SE, SH, km, eps_r
+		real(dp) :: r_q(3), p1(3), p2(3), vm_t(3)
+		real(dp), dimension(100) :: a, b, w	
+		integer :: n_object, m_tmp
+		
+      call Quadrature_tri(ngp, a, b, w)
+      do t = 1, 2
+         Sum_a(t)%Vector = (/(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)/)
+      end do  
+		eps_r =	r_a%eps_r
+		km = k0*sqrt(eps_r)
+		do m = 1, m_pairs
+			SE = -1.0*SEH(m)
+			SH = -1.0*SEH(m + m_pairs)
+			do t = 1, 2
+				call fn_parameter(struct, m, t, p1, p2, vm_t, Len_m, area_m)
+				pos_neg = -1*(((t-1)*t)-1) 
+				dfm = pos_neg*(Len_m)	!/area_m
+				do i = 1, ngp
+					r_q = r_simplex(a(i), b(i), p1, p2, vm_t)
+					f_mat=0.5*dfm*(r_q-vm_t) !*area_m
+					R_norm = vec_len(r_a%point - r_q)
+					call Diver_Green(km, R_norm, Greenf, DG_SS)
+					GradG = (r_a%point - r_q)/R_norm*DG_SS					
+					K_tmp = im*Omega*my_0*SE*f_mat*Greenf - &
+						cross_c(SH*f_mat, GradG) - 1/(im*Omega*eps_r)*SE*dfm*GradG	
+					Sum_a(1)%Vector = Sum_a(1)%Vector - K_tmp*w(i)!TRF				
+					K_tmp = im*Omega*eps_r*SH*f_mat*Greenf &
+						- 1/(im*Omega*my_0)*SH*dfm*GradG + SE*cross_c(f_mat, GradG)
+					Sum_a(2)%Vector = Sum_a(2)%Vector - K_tmp*w(i)!TRF
+				end do            
+			end do !loop i 
+		end do
+      return
+	end subroutine Integration_scattered_field_tri_within_medium	
 	 
  end module lib_sie_tri_calculation_mod

@@ -1,19 +1,3 @@
-!    Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
-!
-!    This file is part of SpeckleSim.
-!
-!    SpeckleSim is free software: you can redistribute it and/or modify
-!    it under the terms of the GNU General Public License as published by
-!    the Free Software Foundation, either version 3 of the License, or
-!    (at your option) any later version.
-!
-!    SpeckleSim is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-!    GNU General Public License for more details.!
-! 
-! @author: Liwei Fu
-	
 module lib_sie_tri_mlfmm_interface
 	use libtree
 	use libmlfmm 
@@ -282,13 +266,13 @@ module lib_sie_tri_mlfmm_interface
 		
 	end subroutine lib_sie_ml_fmm_get_vector_b_tri !	
 	
-    
-   ! Argument
-   ! ----
-   !   vector_x: double complex, dimension(:)
-   !       vector x: M x = b
-   !   vector_b: double complex, dimension(:)
-   !       vector x:
+    !
+    !        ! Argument
+    !        ! ----
+    !        !   vector_x: double complex, dimension(:)
+    !        !       vector x: M x = b
+    !        !   vector_b: double complex, dimension(:)
+    !        !       vector x:
 	subroutine lib_sie_ml_fmm_calculate_vector_b_tri(vector_x, vector_b)    
       implicit none
       ! dummy
@@ -795,13 +779,20 @@ module lib_sie_tri_mlfmm_interface
 			
 			m_tree_neighbourhood_size_k = lib_ml_fmm_get_neighbourhood_size_k()
 			m_csr = 0
-	
+			
+			!!$omp parallel default (shared)  &
+			!!$omp private (data_element_e2, element_number_e2) &
+			!!$omp shared (m, m_csr, m_pairs, m_tree_neighbourhood_size_k)
+			!!$omp do	
 			do m = 1, m_pairs
 				data_element_e2 = lib_tree_get_domain_e2(m_tree_neighbourhood_size_k, element_uindex(m), element_number_e2)
 				m_csr = m_csr + size(element_number_e2)
 				deallocate(data_element_e2)
 				deallocate(element_number_e2)
 			end do
+			
+			!!$omp end do
+			!!$omp end parallel
 			
 			if (allocated(field_csr%a))then
 				deallocate(field_csr%a)
@@ -861,6 +852,30 @@ module lib_sie_tri_mlfmm_interface
 				deallocate(n_arr_tmp)				
 			end do !loop m	
 		end subroutine precalculation_near_field_csr_tri		
+
+		
+	!	subroutine find_elements_in_field_csr(i, j, ia, ja, a_csr, x)
+	!		implicit none
+	!		integer, intent(in) :: i, j
+	!		integer, dimension(:), intent(in) :: a_csr
+	!	
+	!		integer, intent(out) :: x
+	!		integer, dimension(:), intent(in) :: ia, ja
+	!		integer :: is, it, m		
+ !
+	!		x = 0
+	!		is = ia(i)
+	!		it = ia(i+1)-1
+	!		do m = is, it
+	!			if (ja(m) .eq. j) then
+	!				x = a_csr(m)
+	!			else				
+	!			 cycle	
+	!			end if		
+	!		end do
+	!end subroutine
+	
+
 		
 	!++++++++++++++++++++++++++++++++++++++++++++++++
 		!Test functions

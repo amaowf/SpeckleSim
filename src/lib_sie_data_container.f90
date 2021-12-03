@@ -31,7 +31,7 @@ module lib_sie_data_container
 	complex(dp) ::	eta_1, eta_2
 	integer(kind = 1) :: total_field
 	
-	integer :: calc_p(6)
+	integer :: calc_p(8)
 	character(100) :: file_name_surface	
 	character(len = 100) :: File_NodeCoordinates
 	character(len = 100) :: File_Element_NodeIndices	
@@ -39,14 +39,19 @@ module lib_sie_data_container
 	character(100) :: file_name_output_II
 	character (len=100) :: file_out_error
 	character (len=100) :: file_out_parameters
-	
-	real(dp) :: surface_length
+		
 	real(dp) :: theta_start, theta_end, phi_start, phi_end
+	real(dp) :: surface_center(3), geometry_p(2)	
+	real(dp) :: position_c, dim_a_min, dim_a_max, dim_b_min, dim_b_max
+	integer :: sampling_na, sampling_nb, n_disc
+	
+	type(evaluation_r_media), dimension(:), allocatable :: r_media
 	!--------------------------------------------------------------------------	
 	real(dp), public :: beam_waist 
 	type(lib_sie_illumination_parameter), public :: illumination_p
-	type(preset_type), public :: pre_types
-		
+	type(preset_type), public :: pre_types	
+	type(lib_sie_parameter_objective), public :: p_obj
+	
 	type(lib_sie_evaluation_parameter_type), public :: evaluation_parameter
 	real(dp), dimension(2), parameter :: nearfield_distance = (/200.0e-9, 500.0e-9/)
 	integer, public :: number_objects 

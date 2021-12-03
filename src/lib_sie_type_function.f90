@@ -1,19 +1,3 @@
-!    Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
-!
-!    This file is part of SpeckleSim.
-!
-!    SpeckleSim is free software: you can redistribute it and/or modify
-!    it under the terms of the GNU General Public License as published by
-!    the Free Software Foundation, either version 3 of the License, or
-!    (at your option) any later version.
-!
-!    SpeckleSim is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-!    GNU General Public License for more details.!
-! 
-! @author: Liwei Fu	
-	
 module lib_sie_type_function
 	use lib_sie_constants
 	use lib_sie_lookup_table	
@@ -39,6 +23,13 @@ module lib_sie_type_function
 		type(fn_rwg) :: fn
 	end type edges_fn
 	
+	type :: evaluation_r_media
+		real(dp) :: point(3)
+		complex(dp) :: eps_r
+		integer :: media !1 or 2: 1 for free space and 2 for medium
+		integer :: ngp
+	end type
+	
 	type :: edges_in_structure
 		type(edges_fn), dimension(2) :: fn_ot
 	end type edges_in_structure
@@ -60,9 +51,11 @@ module lib_sie_type_function
 		complex, dimension(10,10) :: matrix
 	end type matrix_c
 	
+	!******************++
 	type :: Element_tri
 		integer, dimension(:), allocatable :: corners !index of each corner point				
 	end type Element_tri
+
 	
    type :: Pair
 		integer :: corner(2) !corner indices
@@ -187,6 +180,11 @@ module lib_sie_type_function
 		complex(dp) :: Tt
 	end type
 
+	type lib_sie_parameter_objective
+		real(dp) :: M !magnification
+		real(dp) :: NA
+		real(dp) :: r_ph !radius of the pinhole		
+	end type lib_sie_parameter_objective
 	!********
 	!For quadrilateral elements
 	type :: Edge_Adjacent !Pair is changed into "Edge_Adjacent"

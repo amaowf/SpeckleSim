@@ -1,19 +1,3 @@
-!    Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
-!
-!    This file is part of SpeckleSim.
-!
-!    SpeckleSim is free software: you can redistribute it and/or modify
-!    it under the terms of the GNU General Public License as published by
-!    the Free Software Foundation, either version 3 of the License, or
-!    (at your option) any later version.
-!
-!    SpeckleSim is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-!    GNU General Public License for more details.!
-! 
-! @author: Liwei Fu	
-
 module lib_sie_mlfmm
 	use lib_sie_math
 	use lib_sie_data_container
@@ -241,7 +225,8 @@ module lib_sie_mlfmm
 		
 		d_phi = 2*PI/(2*K_m)
 		
-		do j = 1, K_m		   
+		do j = 1, K_m
+		   !!$OMP PARALLEL DO PRIVATE(i, x_c_child, list_index, hierarchy_type)
 			do k = 1, K_m*2
 				phi = (k-1)*d_phi 
 				i = k + (j-1)*K_m*2				
@@ -266,11 +251,12 @@ module lib_sie_mlfmm
 	subroutine fx_fy(fn_scs)		
 		use libmath
 		implicit none
-		type(lib_ml_fmm_coefficient), intent(in) :: fn_scs 	
+		type(lib_ml_fmm_coefficient), intent(in) :: fn_scs 
+		!type(lib_ml_fmm_coefficient) :: fxy
 		integer :: i, N
 		call init_list_sie(fxy, 2, 2)
 		N = size(Fn_scs%a_nm%item(1)%item)
-		do i = 1, 2 
+		do i = 1, 2 !k1, k2
 			fxy%a_nm%item(i)%item(1) = Fn_scs%a_nm%item(i)%item(N-1) !fx, Ns+2: theta = 0
 			fxy%b_nm%item(i)%item(1) = Fn_scs%b_nm%item(i)%item(N-1) !fy, Ns+2: theta = 0
 			!new
@@ -288,9 +274,12 @@ module lib_sie_mlfmm
 		
 		integer :: i, j, k, tt, Ns_m, Ns_n
 		integer :: it, jp, m_phi, n_phi, t, s, kp, kt
-				
-		real(dp) :: dphi, a, b, theta, phi		
-		complex(dp), dimension(:, :), allocatable :: ff_inter_a, ff_inter_b!		
+		
+		!type(Integration_fn_scs) :: Int_fn_inter, Int_fn
+		real(dp) :: dphi, a, b, theta, phi
+		
+		complex(dp), dimension(:, :), allocatable :: ff_inter_a, ff_inter_b!
+		
 		type(lib_ml_fmm_coefficient) :: C_tmp
 		
 		complex(dp), dimension(:, :, :), allocatable :: ff_in, ff_out_a, ff_out_b!
@@ -402,8 +391,8 @@ module lib_sie_mlfmm
 	
 	subroutine Lagrange_Interpolation_Weights(x, t, p, tp_arr, tp_arr_ext, wk)
 		implicit none
-	
-		integer, intent(in):: t, p!
+		!tp_arr: The original theta or phi array		
+		integer, intent(in):: t, p!, K_n, K_m
 		real(dp), dimension(:), allocatable :: xx, wk, tp_arr, tp_arr_ext
 		real(dp) :: x
 		integer :: K_arr, j, kt, m	
@@ -512,7 +501,8 @@ module lib_sie_mlfmm
 		real(dp), dimension(:), allocatable :: a_theta, a_phi
 		real(dp) :: Max_p(2), Max_t(2)
 		real(dp) :: xt, xp
-		complex(dp) :: fxy1(4, 2), fxy2(4, 2)
+		complex(dp) :: fxy1(4, 2), fxy2(4, 2)!fx1, fy1, fx2, fy2, 
+		!intrinsic cos, sin
 		
 		K_n = 2*K_m
 		n_phi = K_n+2*p+1
@@ -520,6 +510,8 @@ module lib_sie_mlfmm
 		call theta_phi_extended(K_m, a_phi, a_theta)
 		allocate(ff_out(K_m+2*p+2, K_n+2*p+1, 4))
 		ff_out=(0.0, 0.0)
+		
+		! ++ fx and fy at theta = 0 and PI		
 		
 		do j = 1, 4
 			fxy1(j, 1:2) =(/ff_in(K_m+1, 1, j), ff_in(K_m+1, 2, j)/) !theta = 0, k1 and k2
@@ -541,7 +533,8 @@ module lib_sie_mlfmm
 		
 		ff_out(p+2:K_m+p+1, p+1:K_n+p, 1:4) = ff_in(1:K_m, 1:K_n, 1:4)
 		
-		do m = 1, K_m+2*p+2!		
+		do m = 1, K_m+2*p+2!
+			!print*, 'm=', m
 			xt = a_theta(m-p + K_m+1)
 			do n = 1, K_n+2*p+1!n_phi
 				xp = a_phi(n-p+K_n)
@@ -579,13 +572,15 @@ module lib_sie_mlfmm
     
 	subroutine theta_phi_extended(K_m, a_phi, a_theta)
 	! theta and phi for Lagrange interpolation
-	! p is the one-side sampling point number closing the source point. 	
+	! p is the one-side sampling point number closing the source point. 
+		!real(dp), dimension(:), allocatable :: tmp_theta, tmp_phi
 		real(dp), dimension(:), allocatable, intent(out) :: a_theta, a_phi
 		integer, intent(in) :: K_m
 		real(dp) :: d_phi, a, b
 		integer :: Np, m_ph
 		real(dp), dimension(:), allocatable :: xx, ww
-		integer :: j, k		
+		integer :: j, k
+		!intrinsic :: sqrt, acos
 				
 		m_ph = 3*(2*K_m)
 		Np = K_m*m_ph
@@ -649,7 +644,7 @@ module lib_sie_mlfmm
 		d_c = lib_tree_get_box_edge_length(k)*lib_tree_scaling_D%x(1)
 		box_at_l%lmax = m_tree_l_max
 		box_at_l%dc = d_c
-		
+		print*, 'd_c at k=lmax', d_c
 		if (allocated(truncation_number)) then
 			deallocate(truncation_number)
 		end if
@@ -658,9 +653,11 @@ module lib_sie_mlfmm
 		truncation_number(:)%n = 0
 		truncation_number(:)%near_field = .false.
 		k = 2
-		d_c = lib_tree_get_box_edge_length(k)*lib_tree_scaling_D%x(1)	
+		d_c = lib_tree_get_box_edge_length(k)*lib_tree_scaling_D%x(1)
+		print*, 'd_c at k=2', d_c
 		dd = abs(k1)*d_c*sqrt(3.0) !diameter of the sphere 
-		n = abs(dd) + 1.8*(d0)**2/3*abs(dd)**(1/3)
+		n = abs(dd) + 1.8*(d0)**2/3*abs(dd)**(1/3)		
+		print*, 'n=', n
 		!check why on server n=14 instead of 9
 		
 		!Assuming that only at the lowest level, k2 is considered. 

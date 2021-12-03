@@ -1,4 +1,4 @@
-!    Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
+  !Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
 !
 !    This file is part of SpeckleSim.
 !
@@ -23,6 +23,7 @@ module lib_sie_tri_solver_normal
 	use lib_sie_constants
 	use lib_sie_data_container
 	use lib_sie_type_function 
+	use time_stamp
 	
 	use lib_sie_tri_data_container
 	use lib_sie_tri_calculation_mod
@@ -33,6 +34,8 @@ module lib_sie_tri_solver_normal
 	
 	public :: run_normal_tri_calculation	
 	public :: lib_sie_tri_solver_normal_II
+	public :: test_conical_illumination
+	public :: test_Gaussian_illumination
 	
 	complex(dp), dimension(:), allocatable :: b_vec!
 	character(len = 10) :: calculation_step 
@@ -44,7 +47,7 @@ module lib_sie_tri_solver_normal
 		
 		if (calc_p(6) .eq. 1) then
 			calculation_step  = 'solver_I' 
-			call lib_sie_tri_solver_normal_I()
+			call lib_sie_tri_solver_normal_I()		
 		else if (calc_p(6) .eq. 2) then
 			calculation_step  = 'solver_II' 
 			call lib_sie_tri_solver_normal_II()
@@ -53,6 +56,7 @@ module lib_sie_tri_solver_normal
 			call lib_sie_tri_solver_normal_I()
 			call lib_sie_tri_solver_normal_II()
 		else 
+		
 			print*, 'Not a proper calculation step type!'
 			call exit
 		end if
@@ -84,7 +88,7 @@ module lib_sie_tri_solver_normal
 		call precalculation_fn(struc_tri)			
 		allocate(D_mat(m_edge, m_edge)) !
 		allocate(b_vec(m_edge))		
-		call get_vector_b_tri(b_vec)
+		call get_vector_b_tri(b_vec)		
 	 
 		print*, 'Begin to calculate step-I'
 		call system_clock(test_count_start_sub, test_count_rate_sub)
@@ -93,9 +97,9 @@ module lib_sie_tri_solver_normal
 		counter = 0	 
 		!$omp parallel private (m, n, p, q)  &
 		!$omp private (r_ref, D_mat_tmp) &
-		!$omp shared (m_pairs, struc_tri, b_vec, D_mat, counter)		
-		!PRINT*, 'Number of threads =', omp_get_num_threads()
+		!$omp shared (m_pairs, struc_tri, b_vec, D_mat, counter)				
 		!$omp do
+		!PRINT*, 'Number of threads =', omp_get_num_threads()
 		do m = 1, m_pairs ! 			
 			counter = counter+1
 			if (m_pairs >10000) then		
@@ -127,7 +131,7 @@ module lib_sie_tri_solver_normal
       call system_clock(test_count_finish_sub, test_count_rate_sub)
 		impedance_time = (test_count_finish_sub-test_count_start_sub) &
                                                        / real(test_count_rate_sub)/60		
-		print '("Time for impedance calculation = ",f13.5," min.")', impedance_time 
+		print '("Time for impedance calculation = ",f13.5," minutes")', impedance_time 
 				  
       call system_clock(test_count_start_sub, test_count_rate_sub)
 		call cpu_time(test_start_sub)
@@ -156,24 +160,28 @@ module lib_sie_tri_solver_normal
 		
 		!file_out = 'Calculation_parameters_normal.txt'	
 		if (pre_types%object .eq. 'sphere') then
+			
+		   write(file_out, '(I8.8)') tri_sp_parameters(1)%n_disc		
+			file_out_parameters = 'ndisc_'//trim(file_out)//'_'//trim(file_out_parameters)
+			
 			open (unit = 206,file = file_out_parameters, action="write", status = 'replace')!!!
 			
 				write (206, *) 'object_type =                  ', pre_types%object
 				write (206, *) 'formulation_type =             ', pre_types%formulation
 				write (206, *) 'illumination_type =            ', pre_types%illumination
-				write (206, *) 'beam_waist(�m) (Gaussian beam) =   ', beam_waist*1e+6
+				write (206, *) 'beam_waist(um) (Gaussian beam) =   ', beam_waist*1e+6
 			
 				write (206, *) 'Wavelength (nm) =          ', illumination_p%lambda*1.0e+9
 				write (206, *) 'sphere number =            ', number_objects
-				write (206, *) 'Sphere diameter (�m) =     ', tri_sp_parameters(1:number_objects)%D*1.0e+6
+				write (206, *) 'Sphere diameter (um) =     ', tri_sp_parameters(1:number_objects)%D*1.0e+6
 				write (206, *) 'Ndisc =                    ', tri_sp_parameters(1:number_objects)%n_disc
 				write (206, *) 'N_el =                    ', n_el
 				write (206, *) 'Sphere centroid (m) =      ', tri_sp_parameters(1:number_objects)%centroid				
 				write (206, *) 'eps_r2 =                   ', eps_r2
 				write (206, *) 'evaluation_type =			  ', pre_types%evaluation
-				write (206, *) 'evaluation_parameter%dim_c(nm) =   ', evaluation_parameter%dim_c
-				write (206, *) 'evaluation_parameter%dim_a(�m) =   ', (evaluation_parameter%dim_a(2)-evaluation_parameter%dim_a(1))*1.0e+6
-				write (206, *) 'evaluation_parameter%dim_b(�m) =   ', (evaluation_parameter%dim_b(2)- evaluation_parameter%dim_b(1))*1.0e+6
+				write (206, *) 'evaluation_parameter%dim_c(um) =   ', evaluation_parameter%dim_c
+				write (206, *) 'evaluation_parameter%dim_a(um) =   ', (evaluation_parameter%dim_a(2)-evaluation_parameter%dim_a(1))*1.0e+6
+				write (206, *) 'evaluation_parameter%dim_b(um) =   ', (evaluation_parameter%dim_b(2)- evaluation_parameter%dim_b(1))*1.0e+6
 				write (206, *) 'illumination_p%theta_in =          ',	illumination_p%theta_in*180/PI
 				write (206, *) 'illumination_p%phi_in =          ',	illumination_p%phi_in*180/PI
 				write (206, *) 'Impedance time (min.)         ', impedance_time 
@@ -181,23 +189,24 @@ module lib_sie_tri_solver_normal
 				write (206, *) 'm_pairs                 ', m_pairs
 			close(206)
 		else if (pre_types%object .eq. 'surface') then
+			
 			open (unit = 206,file = file_out_parameters, action="write", status = 'replace')!!!			
 			
 				write (206, *) 'object_type =                  ', pre_types%object
 				write (206, *) 'formulation_type =             ', pre_types%formulation
 				write (206, *) 'illumination_type =            ', pre_types%illumination
-				write (206, *) 'beam_waist(�m) (Gaussian beam) =   ', beam_waist*1e+6
-				write (206, *) 'Wavelength (�m) =           ', illumination_p%lambda*1.0e+6
+				write (206, *) 'beam_waist(nm) (Gaussian beam) =   ', beam_waist*1e+9
+				write (206, *) 'Wavelength (nm) =           ', illumination_p%lambda*1.0e+9
 				write (206, *) 'object number =             ', number_objects
-				write (206, *) 'object dimension I (�m) =   ', tri_sf_parameters(1:number_objects)%D(1)*1.0e+6
-				write (206, *) 'object dimension II (�m) =  ', tri_sf_parameters(1:number_objects)%D(2)*1.0e+6
+				write (206, *) 'object dimension I (um) =   ', tri_sf_parameters(1:number_objects)%D(1)*1.0e+6
+				write (206, *) 'object dimension II (um) =  ', tri_sf_parameters(1:number_objects)%D(2)*1.0e+6
 				write (206, *) 'object centroid (m) =       ', tri_sf_parameters(1:number_objects)%centroid
 				write (206, *) 'N_el =                      ', n_el
 				write (206, *) 'eps_r2 =                    ', eps_r2
 				write (206, *) 'evaluation_type =			  ', pre_types%evaluation
-				write (206, *) 'evaluation_parameter%dim_c(nm) =   ', evaluation_parameter%dim_c
-				write (206, *) 'evaluation_parameter%dim_a(�m) =   ',  (evaluation_parameter%dim_a(2)-evaluation_parameter%dim_a(1))*1.0e+6
-				write (206, *) 'evaluation_parameter%dim_b(�m) =   ',  (evaluation_parameter%dim_b(2)-evaluation_parameter%dim_b(1))*1.0e+6
+				write (206, *) 'evaluation_parameter%dim_c(um) =   ', evaluation_parameter%dim_c
+				write (206, *) 'evaluation_parameter%dim_a(um) =   ',  (evaluation_parameter%dim_a(2)-evaluation_parameter%dim_a(1))*1.0e+6
+				write (206, *) 'evaluation_parameter%dim_b(um) =   ',  (evaluation_parameter%dim_b(2)-evaluation_parameter%dim_b(1))*1.0e+6
 				write (206, *) 'illumination_p%theta_in =          ',	illumination_p%theta_in*180/PI
 				write (206, *) 'illumination_p%phi_in =          ',	illumination_p%phi_in*180/PI
 				write (206, *) 'Impedance time(min.)           ', impedance_time 
@@ -243,7 +252,7 @@ module lib_sie_tri_solver_normal
 				end do
 			close(in_unit)
 		else if ((pre_types%calculation .eq. 'Gmres_tri') .and. (calc_p(6) .eq. 3 )) then
-			b_vec = simulation_data%vector_x
+			b_vec = simulation_data%vector_x		
 		else if ((pre_types%calculation .eq. 'Normal_tri') .and. (calculation_step .ne. 'solver_II')) then	
 			continue 
 		else
@@ -251,7 +260,8 @@ module lib_sie_tri_solver_normal
 			call exit
 		end if		
 		call set_evaluation_parameters_tri()
-		print*, 'Begin to calculate step-II'
+		
+		!print*, 'Begin to calculate step-II'
 		
 		call system_clock(test_count_start_sub, test_count_rate_sub)
 		call cpu_time(test_start_sub)
@@ -261,9 +271,9 @@ module lib_sie_tri_solver_normal
 		call cpu_time(test_finish_sub)
       call system_clock(test_count_finish_sub, test_count_rate_sub)
 
-		print '("Field calculation time = ",f10.3," seconds.")', &
+		print '("Field calculation time = ",f10.3," min.")', &
 					(test_count_finish_sub-test_count_start_sub) &
-                                                       / real(test_count_rate_sub)		
+                                                       / real(test_count_rate_sub)	/60
 		print*, 'Finished step-II'
 	end subroutine lib_sie_tri_solver_normal_II
 
@@ -275,108 +285,87 @@ module lib_sie_tri_solver_normal
 		!real(dp) :: r1, r2
 		
 		!dummy
-		integer :: m, Nop, n, ngp, counter
-		integer(kind = 1) :: tot_field
+		integer :: m, Nop, n, ngp, counter		
 		type(point) :: r_local
-		
-		type(point), dimension(:), allocatable :: r_local_far
-		type(point), dimension(:), allocatable :: r_local_near
-		
 		type(vector_c), dimension(2) :: sum_aa
 		type(vector_c) :: Hfield_in, Efield_in
-		type(lib_sie_evaluation_point_type), dimension(:), allocatable :: input_field, input_field_near
+		type(lib_sie_evaluation_point_type), dimension(:), allocatable :: input_field		
 		real(dp), dimension(:), allocatable :: Energy_scat, theta_scatter
 		real(dp) :: dx_a
 				
 		counter=0 
 		
-		call get_evaluation_points(evaluation_parameter, pre_types%evaluation, r_local_far)		
-		input_field = lib_sie_tri_input_field_calculation(r_local_far)
-		
-		tot_field = evaluation_parameter%tot_field		
+		call get_evaluation_points_domain(evaluation_parameter, eps_r1, eps_r2, calc_p, geometry_p, r_media)		
+		call lib_sie_tri_input_field_calculation(input_field)			
 		Nop = size(input_field)
-		allocate(E_out(Nop), H_out(Nop), Energy_scat(Nop))
-	
 		print*, 'Nop=', Nop	
-		if (pre_types%evaluation .eq. 'BRDF')then
+
+		allocate(E_out(Nop), H_out(Nop), Energy_scat(Nop))
+		
+		if ((pre_types%evaluation .eq. 'BRDF_n' ) .or. (pre_types%evaluation .eq. 'BRDF_p') )then
 			allocate(theta_scatter(evaluation_parameter%N_dim(1)))			
 			dx_a = (evaluation_parameter%dim_a(2) - evaluation_parameter%dim_a(1))/(evaluation_parameter%N_dim(1)-1)
 			do m = 1, evaluation_parameter%N_dim(1)
 				theta_scatter(m) = evaluation_parameter%dim_a(1) + dx_a*(m-1)
 			end do
-			!evaluation_parameter%dim_c = beam_waist	
-			!call get_evaluation_points(evaluation_parameter, pre_types%evaluation, r_local_near)
-			!r_local_near(1:Nop)%point(3) = 500.0e-9 !temporary solution
-			!input_field_near = lib_sie_tri_input_field_calculation(r_local_near)			
 		end if			
 		
 		if ((pre_types%evaluation .eq. 'rcs_p') .or. (pre_types%evaluation .eq. 'rcs_n')) then		
-			!$omp parallel private (m, n, sum_aa, Efield_in, Hfield_in, r_local, ngp) &  
-			!$omp shared (m_pairs, Nop, counter, E_out, H_out,  S_EH, struc_tri, Energy_scat) & 
-			!$omp shared (input_field) !
+			!$omp parallel private (m, sum_aa, Efield_in, Hfield_in, ngp) &  
+			!$omp shared (m_pairs, Nop, counter, E_out, H_out, S_EH, struc_tri, Energy_scat, r_media) 			
 			!$omp do
 			do m = 1, Nop ! for all r
 				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
 					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
-				end if
-				r_local =  input_field(m)%coordinate
-				ngp = 3
-				call Integration_scattered_field_tri(r_local, struc_tri, ngp, S_EH, Sum_aa)
+				end if				
+				ngp = 3				
+				call Integration_scattered_field_tri(r_media(m)%point, struc_tri, ngp, S_EH, Sum_aa) !
 				E_out(m)%vector =  sum_aa(1)%vector ! 
 				H_out(m)%vector =  sum_aa(2)%vector ! 
-				Energy_scat(m) = dot_product(E_out(m)%vector, E_out(m)%vector)*4*pi*vec_len(r_local%point)**2! &			
+				Energy_scat(m) = dot_product(E_out(m)%vector, E_out(m)%vector)*4*pi*vec_len(r_media(m)%point)**2! &
 				counter = counter + 1
 			end do
 			!$omp end do
 			!$omp end parallel  
-		else if (pre_types%evaluation .eq. 'BRDF') then		
-			!$omp parallel private (m, n, sum_aa, Efield_in, Hfield_in, r_local, ngp) &  
-			!$omp shared (m_pairs, Nop, counter, E_out, H_out,  S_EH, struc_tri, Energy_scat) & 
-			!$omp shared (input_field) !
+		else if ((pre_types%evaluation .eq. 'BRDF_n' ) .or. (pre_types%evaluation .eq. 'BRDF_p')) then		
+			!$omp parallel private (m, n, sum_aa, Efield_in, Hfield_in, ngp) &  
+			!$omp shared (m_pairs, Nop, counter, E_out, H_out, S_EH, struc_tri, Energy_scat, r_media) 		
 			!$omp do
 			do m = 1, Nop ! for all r
 				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
 					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
-				end if
-				r_local =  input_field(m)%coordinate
-
+				end if				
 				ngp = 3
-				call Integration_scattered_field_tri(r_local, struc_tri, ngp, S_EH, Sum_aa)
+				call Integration_scattered_field_tri(r_media(m)%point, struc_tri, ngp, S_EH, Sum_aa)
 				E_out(m)%vector =  sum_aa(1)%vector ! 
-				H_out(m)%vector =  sum_aa(2)%vector ! 
-				
-				!implemented according to Carl Leader
-				Energy_scat(m) = dot_product(E_out(m)%vector, E_out(m)%vector)*vec_len(r_local%point)**2! &	
-				Energy_scat(m)= Energy_scat(m)/(cos(illumination_p%theta_in)*cos(theta_scatter(m)))! &
-									!/dot_product(input_field_near(m)%e_field%vector, input_field_near(m)%e_field%vector)
-			
+				H_out(m)%vector =  sum_aa(2)%vector ! 							
+				Energy_scat(m) = dot_product(E_out(m)%vector, E_out(m)%vector)*vec_len(r_media(m)%point)**2! &	
+				Energy_scat(m)= Energy_scat(m)/(cos(illumination_p%theta_in)*cos(theta_scatter(m)))
 				counter = counter + 1
 			end do
 			!$omp end do
 			!$omp end parallel  
 			
 		else if ((pre_types%object .eq. 'sphere') .or. (pre_types%object .eq. 'surface')) then
-			!$omp parallel private (m, n, sum_aa, Efield_in, Hfield_in, r_local, ngp) &  
-			!$omp shared (m_pairs, Nop, counter, E_out, H_out,  S_EH, struc_tri) & 
+			!$omp parallel private (m, n, sum_aa, Efield_in, Hfield_in,  ngp) &  
+			!$omp shared (m_pairs, Nop, counter, E_out, H_out, r_media, S_EH, struc_tri)  &
 			!$omp shared (input_field) !, nearfield_D
 			!$omp do
 			do m = 1, Nop ! for all r
 				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
 					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
 				end if
-				r_local =  input_field(m)%coordinate
-				ngp = input_field(m)%ngp
-				if (ngp .eq. 50) then
-					ngp = 6
-					call Integration_scattered_field_tri(r_local, struc_tri, ngp, S_EH, sum_aa)
-					E_out(m)%vector = input_field(m)%e_field%vector*tot_field + sum_aa(1)%vector
-					H_out(m)%vector = input_field(m)%h_field%vector*tot_field + sum_aa(2)%vector
-					!E_out(m)%vector(1:3) = (0.0d0, 0.0d0)
-					!H_out(m)%vector(1:3) = (0.0d0, 0.0d0)					
-				else				 
-					call Integration_scattered_field_tri(r_local, struc_tri, ngp, S_EH, sum_aa)
-					E_out(m)%vector = input_field(m)%e_field%vector*tot_field + sum_aa(1)%vector
-					H_out(m)%vector = input_field(m)%h_field%vector*tot_field + sum_aa(2)%vector									
+				
+				if (r_media(m)%media .eq. 2)then				
+					ngp = r_media(m)%ngp						
+					call Integration_scattered_field_tri_within_medium(r_media(m), struc_tri, ngp, S_EH, sum_aa)				
+					E_out(m)%vector(1:3) = sum_aa(1)%vector
+					H_out(m)%vector(1:3) = sum_aa(2)%vector						
+				else		
+				   ngp = r_media(m)%ngp
+					call Integration_scattered_field_tri(r_media(m)%point, struc_tri, ngp, S_EH, sum_aa)					
+					E_out(m)%vector = input_field(m)%e_field%vector*total_field + sum_aa(1)%vector
+					H_out(m)%vector = input_field(m)%h_field%vector*total_field + sum_aa(2)%vector						
 				end if
 				counter = counter + 1
 			end do	
@@ -387,7 +376,9 @@ module lib_sie_tri_solver_normal
 				
 		call timestamp()
 		
-		if ((pre_types%evaluation .eq. 'rcs_n') .or. (pre_types%evaluation .eq. 'rcs_p') .or. (pre_types%evaluation .eq. 'BRDF'))then
+		if ((pre_types%evaluation .eq. 'rcs_n') .or. (pre_types%evaluation .eq. 'rcs_p') .or. &		
+			(pre_types%evaluation .eq. 'BRDF_p') .or. (pre_types%evaluation .eq. 'BRDF_n'))then
+			
 			open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
 				do m = 1, Nop        
 					write (203, '(1001(E19.12, tr3))') Energy_scat(m)        
@@ -396,10 +387,26 @@ module lib_sie_tri_solver_normal
 		else
 			open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
 				do m = 1, Nop        
-					write (203, '(1001(E19.12, tr3))') (real(E_out(m)%vector(n)), n= 1, 3), (imag(E_out(m)%vector(n)), n= 1, 3)         
+					write (203, '(1001(E19.12, tr3))') (real(E_out(m)%vector(n)), n= 1, 3), (imag(E_out(m)%vector(n)), n= 1, 3)  
 				end do
 			close(203)
 		end if
+		
+		!open (unit = 203, file = 'test_domain.txt', action = "write",status = 'replace')
+		!	do m = 1, Nop        
+		!		write (203, '(1001(E19.12, tr3))') 	real(r_media(m)%eps_r)
+		!	end do
+		!close(203)
+		
+		!!Only input field 
+		!********************************
+		!open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
+		!	do m = 1, Nop        
+		!		write (203, '(1001(E19.12, tr3))') 	(real(input_field(m)%e_field%vector(n)), n= 1, 3), &
+		!		(imag(input_field(m)%e_field%vector(n)), n= 1, 3)	
+		!	end do
+		!close(203)
+		!
 		
 		if (allocated(struc_tri%points))then
 			deallocate(struc_tri%points)
@@ -431,7 +438,104 @@ module lib_sie_tri_solver_normal
 		
 		return
 	end subroutine
+	
+	!Test for the conical_illumination(illumination, p_obj, r_local, M_obj, E_surf)	
+	subroutine test_conical_illumination(p_obj)
+		type(lib_sie_parameter_objective), intent(in) :: p_obj
+		type(vector_c) :: E_surf
+		real(dp) :: r_local(3), M_obj 
+		integer :: Nop, m, n, in_unit, counter, Nx, Nz
+		type(point), dimension(:), allocatable :: r_local_tt
+		type(vector_c), dimension(:), allocatable :: E_out
+		
+		!dummy
+		character (len=40) :: dummy !		
+		real(dp), dimension(2) ::  bb_vec
+		real(dp) :: z0, x0, y0, dx, dz
+		!
+		Nx = 201
+		Nz = 201
+		
+		Nop = Nx*Nz
+		dx = 4.0e-6/(Nx-1)
+		dz = 4.0e-6/(Nz-1)
+		
+		allocate(r_local_tt(Nop), E_out(Nop))
+		counter = 0!
+		
+		do m = 1, Nz
+			do n = 1, Nx
+				counter = (m-1)*Nz + n
+				x0 = -2.0e-6 + dx*(n-1)
+				!y0 = -1.0e-6 + 0.02e-6*m
+				y0 = 0.0
+				z0 = -2.0e-6 + dz*(m-1)
+				r_local_tt(counter)%point(1:3) = (/x0, y0, z0/)
+			end do
+		end do
+					
+		do m = 1, Nop ! for all r
+			r_local(1:3) =  r_local_tt(m)%point(1:3)		
+			call conical_illumination(p_obj, r_local, illumination_p,  E_out(m))
+		end do
+		
+		
+		open (unit = 203, file = 'test_focus_field.txt', action = "write",status = 'replace')
+			do m = 1, Nop        
+				write (203, '(1001(E19.12, tr3))') (real(E_out(m)%vector(n)), n= 1, 3), (imag(E_out(m)%vector(n)), n= 1, 3)
+			end do
+		close(203)
+		
+	end subroutine	
+	
+	subroutine test_Gaussian_illumination()
+		!type(lib_sie_parameter_objective), intent(in) :: p_obj
+		type(vector_c) :: E_surf
+		real(dp) :: r_local(3), M_obj 
+		integer :: Nop, m, n, in_unit, counter, Nx, Nz
+		type(point), dimension(:), allocatable :: r_local_tt
+		type(vector_c), dimension(:), allocatable :: E_out
+		
+		!dummy
+		character (len=40) :: dummy !file_SEH,		
+		real(dp), dimension(2) ::  bb_vec
+		real(dp) :: z0, x0, y0, dx, dz
+		complex(dp) :: kd
+		
+		kd = k1
+		!
+		Nx = 201
+		Nz = 201
+		
+		Nop = Nx*Nz
+		dx = 4.0e-6/(Nx-1)
+		dz = 4.0e-6/(Nz-1)
+		
+		allocate(r_local_tt(Nop), E_out(Nop))
+		counter = 0!
+		
+		do m = 1, Nz
+			do n = 1, Nx
+				counter = (m-1)*Nz + n
+				x0 = -2.0e-6 + dx*(n-1)
+				!y0 = -1.0e-6 + 0.02e-6*m
+				y0 = 0.0
+				z0 = -2.0e-6 + dz*(m-1)
+				r_local_tt(counter)%point(1:3) = (/x0, y0, z0/)
+			end do
+		end do
+					
+		do m = 1, Nop ! for all r
+			r_local(1:3) =  r_local_tt(m)%point(1:3)		
+			call Gaussian_beam(beam_waist, r_local, illumination_p, E_out(m), kd)!(p_obj, r_local, illumination_p,  E_out(m))				
+		end do
+				
+		open (unit = 203, file = 'test_Gaussian_field.txt', action = "write",status = 'replace')
+			do m = 1, Nop        
+				write (203, '(1001(E19.12, tr3))') (real(E_out(m)%vector(n)), n= 1, 3), (imag(E_out(m)%vector(n)), n= 1, 3)
+			end do
+		close(203)
+		
+	end subroutine	
 		
 end module lib_sie_tri_solver_normal
-
-    

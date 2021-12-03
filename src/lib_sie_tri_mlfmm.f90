@@ -1,19 +1,3 @@
-!    Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
-!
-!    This file is part of SpeckleSim.
-!
-!    SpeckleSim is free software: you can redistribute it and/or modify
-!    it under the terms of the GNU General Public License as published by
-!    the Free Software Foundation, either version 3 of the License, or
-!    (at your option) any later version.
-!
-!    SpeckleSim is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-!    GNU General Public License for more details.!
-! 
-! @author: Liwei Fu
-	
 module lib_sie_tri_mlfmm
 	
 	use omp_lib	
@@ -102,6 +86,10 @@ module lib_sie_tri_mlfmm
       integer(kind=UINDEX_BYTES) :: i, j, m_tree_l_max      
       integer(kind=1) :: hierarchy_type
 		
+		if (allocated(struc_tri%x_c)) then 
+				deallocate(struc_tri%x_c)
+		end if
+		  
 		allocate(struc_tri%x_c(m_pairs))
 		allocate(element_uindex(m_pairs))
 		
@@ -348,6 +336,7 @@ module lib_sie_tri_mlfmm
 	!	end do
 	!	error = abs((tmp-sum_a)/tmp)					
 	!end function
+
 
 	
 	subroutine Lagrange_Interpolation(pp, K_m, K_D, Fn_scs, ff_inter)

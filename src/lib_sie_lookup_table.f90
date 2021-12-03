@@ -1,15 +1,15 @@
-
-	
 !> A Fortran 90 module for creating 1D and 2D lookup tables. These tables can be
 !> used to efficiently interpolate one or more values.
 !>
 !> Author: Jannis Teunissen
-!>	subroutine LT3_create_spaced_data is added by Liwei Fu in 2020
 module lib_sie_lookup_table
 	use lib_sie_constants
   implicit none
   private
- 
+
+  ! The precision of the real numbers used in the tables
+  !integer, parameter :: dp = kind(1.0d0)
+
   ! ** Routines for finding indices in sorted lists **
   public :: find_index_linear
   public :: find_index_bsearch

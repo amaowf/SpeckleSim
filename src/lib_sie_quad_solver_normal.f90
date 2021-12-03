@@ -56,7 +56,7 @@ module lib_sie_quad_solver_normal
 		else 
 			print*, 'Not a proper calculation step type!'
 			call exit
-		end if	
+		end if			
 	end subroutine run_normal_quad_calculation
     
 	subroutine lib_sie_quad_solver_normal_I()
@@ -90,12 +90,12 @@ module lib_sie_quad_solver_normal
 		call set_parameters_quad()
 		call data_import_quad()    !Input the meshing data of the object
 		n_el = size(struc_quad%elements)
-		print*, 'n_el =', n_el
+		print*, 'n_el =', n_el			
 		
 		call Neighbours_EdgeCorner_Full(struc_quad, n_el) !Find out the overlapped edges and corners
 		call Sorting_edge(struc_quad, M_edge, Edge_I, Edge_II) 
-		!
-		N_gesv = 10*n_el
+		
+		N_gesv = 10*n_el	 
 	 
 		allocate (Sum_KA(M_edge, N_gesv))
 		allocate (Sum_KDE(M_edge, N_gesv))
@@ -109,17 +109,17 @@ module lib_sie_quad_solver_normal
 		Sum_KDE(1:m_edge,1:n_gesv) = (0.0, 0.0)             
 		Sum_KDH(1:m_edge,1:n_gesv) = (0.0, 0.0) 
 		
-		call get_vector_b_quad(edge_I, V_EH)
-		
+		call get_vector_b_quad(edge_I, V_EH)		
 		Sum_aa(1:3, 1:10) = 0.0d0
   
 		print*, 'Cores this program has access to:', omp_get_num_procs( ) 		
 		print*, 'M_edge=', M_edge
 		print*, 'Begin to calculate step-I: surface current'
+		
 		call system_clock(test_count_start_sub, test_count_rate_sub)
 		call cpu_time(test_start_sub)
 		counter = 0
-		
+	
 		!$omp parallel private(n, p, s, t) & !
 		!$omp private(ngp, Sum_aa) &
 		!$omp private(type_calculation, loc_corner, loc_edge) &
@@ -231,10 +231,14 @@ module lib_sie_quad_solver_normal
 		close(206)
 		
 		if (pre_types%object .eq. 'sphere') then	
+		
+			write(file_out, '(I5.5)') quad_sp_parameters(1)%nt	
+			
+			file_out_parameters = 'nt_'//trim(file_out)//'_'//trim(file_out_parameters)
 			
 			open (unit = 206,file = file_out_parameters, action="write",status = 'replace')!		
-			write (206,'(A, f9.4)') 'Wavelength (nm) =                            ', illumination_p%lambda*1.0e+9
-			write (206,'(A, f9.4)') 'Sphere diameter (nm) =                       ', quad_sp_parameters(1:number_objects)%D*1.0e+9
+			write (206,'(A, f9.4)') 'Wavelength (um) =                            ', illumination_p%lambda*1.0e+6
+			write (206,'(A, f9.4)') 'Sphere diameter (um) =                       ', quad_sp_parameters(1:number_objects)%D*1.0e+6
 			write (206,'(A, I6)')   'Number of ements: Nt =                       ', quad_sp_parameters(1:number_objects)%Nt
 			write (206,'(A, I6)')   'Number of nodes (corners): Np =              ', quad_sp_parameters(1:number_objects)%Np
 			write (206,'(A, 3f9.4)')'Centroid of the spheres                      ', quad_sp_parameters(1:number_objects)%centroid
@@ -243,19 +247,19 @@ module lib_sie_quad_solver_normal
 			write (206, "(A, es19.12)") 'LU time (mins.)                    ', LU_time	
 			write (206, *) 'm_edge  =                  ', m_edge
 			close(206)
-				
+			
 		else if (pre_types%object .eq. 'surface') then			
 			
 			open (unit = 206,file = file_out_parameters, action="write",status = 'replace')!!	
 			
 			write (206, '(A, f9.4)') 'Wavelength (nm) =              ', illumination_p%lambda*1.0e+9
-			write (206, "(A, f9.4)") 'size of the surface (nm) =     ', quad_sf_parameters(1:number_objects)%D(1)*1.0e+9
+			write (206, "(A, f9.4)") 'size of the surface (um) =     ', quad_sf_parameters(1:number_objects)%D(1)*1.0e+6
 			write (206, "(A, I6)")   'Number of ements: Nt =         ', quad_sf_parameters(1:number_objects)%Nt
 			write (206, "(A, I6)")   'Number of nodes (corners): Np =', quad_sf_parameters(1:number_objects)%Np
-			write (206, "(A, 3f9.4)")'Centroid of the sphere         ', quad_sf_parameters(1:number_objects)%centroid
+			write (206, "(A, 3f9.4)")'Centroid of the surface         ', quad_sf_parameters(1:number_objects)%centroid
 			write (206, "(A, f10.4)")'Impedance time(mins.)              ', impedance_time 
 			write (206, *) 'eps_r2 =                    ', eps_r2
-			write (206, "(A, es19.12)") 'LU time (mins.)                          ', LU_time
+			write (206, "(A, es19.12)") 'LU time (mins.)                 ', LU_time
 			write (206, *) 'm_edge  =                  ', m_edge
 			close(206)
 							
@@ -275,13 +279,13 @@ module lib_sie_quad_solver_normal
 		integer :: m_edge, in_unit
 		
 		character (len=50) :: file_name		
-		real(dp), dimension(2) ::  bb_vec !
-	
+		real(dp), dimension(2) ::  bb_vec !	   
+		
 		if (calculation_step .eq. 'solver_II') then	
-
-			call set_parameters_quad()	
-			call data_import_quad()			
-			n_el = size(struc_quad%elements)
+			call set_parameters_quad()				
+			call data_import_quad()	
+			n_el = size(struc_quad%elements)			
+			
 			call Neighbours_EdgeCorner(struc_quad, n_el)
 			call Sorting_edge(struc_quad, M_edge, Edge_I, Edge_II)
 			print*, 'M_edge = ', M_edge
@@ -299,7 +303,7 @@ module lib_sie_quad_solver_normal
 					V_EH(n) = bb_vec(1) + im*bb_vec(2)
 				end do
 			close(in_unit)
-		else
+		else		  
 			allocate (S_EH(n_el*2, 10))
 			call Sorting_edge(struc_quad, M_edge, Edge_I, Edge_II)
 		end if
@@ -320,9 +324,11 @@ module lib_sie_quad_solver_normal
 	
 		!Input parameters for calculating fields in space 
 		!--------------------------------------------------------------------
-		call set_evaluation_parameters_quad()		
+		call set_evaluation_parameters_quad()				
+		
 		call timestamp()
 		call lib_sie_quad_observation_field_calculation(S_EH, E_out, H_out)!
+		
 		call timestamp()
 		print*, 'Step-II is done'
 		
@@ -335,30 +341,30 @@ module lib_sie_quad_solver_normal
 		complex(dp), dimension(:, :), intent(in) :: S_EH 
 		
 		!dummy
+		type(point), dimension(:), allocatable :: r_local
 		real(dp), dimension(8, 3) :: Element_q ! 		
 		integer :: m, Nop, n, ngp, counter, s, object_index
-		integer(kind = 1) :: tot_field
-		type(point) :: r_loc
-		type(point), dimension(:), allocatable :: r_local
+		type(point) :: r_loc		
 		type(vector_c), dimension(2) :: sum_a	
-		type(lib_sie_evaluation_point_type), dimension(:), allocatable :: input_field		
+		type(lib_sie_evaluation_point_type), dimension(:), allocatable :: input_field
+		
 		real(dp), dimension(:), allocatable :: Energy_scat,theta_scatter
 		character(len = 50) :: file_name 
 		real(dp) :: dx_a
 		
 		counter=0 
 		
-		call get_evaluation_points(evaluation_parameter, pre_types%evaluation, r_local)
-		
-		input_field = lib_sie_quad_input_field_calculation(r_local)	
-		tot_field = evaluation_parameter%tot_field
+		!Illumination is implemented in this function
+		call lib_sie_quad_input_field_calculation(input_field)			
 		Nop = size(input_field)
-		allocate(E_out(Nop), H_out(Nop), Energy_scat(Nop))
 		print*, 'Nop=', Nop
 		
-		if (pre_types%evaluation .eq. 'BRDF')then
+		allocate(E_out(Nop), H_out(Nop), Energy_scat(Nop))
+		
+		
+		if ((pre_types%evaluation .eq. 'BRDF_n' ) .or. (pre_types%evaluation .eq. 'BRDF_p') )then
 			allocate(theta_scatter(evaluation_parameter%N_dim(1)))			
-			dx_a = (evaluation_parameter%dim_a(2) - evaluation_parameter%dim_a(1))/(evaluation_parameter%N_dim(1)-1)
+			dx_a = (evaluation_parameter%dim_a(2) - evaluation_parameter%dim_a(1))/(evaluation_parameter%N_dim(1)-1)			
 			do m = 1, evaluation_parameter%N_dim(1)
 				theta_scatter(m) = evaluation_parameter%dim_a(1) + dx_a*(m-1)
 			end do
@@ -367,7 +373,7 @@ module lib_sie_quad_solver_normal
 		if ((pre_types%evaluation .eq. 'rcs_p') .or. (pre_types%evaluation .eq. 'rcs_n')) then
 		
 			!$omp parallel private( m, n, s, Element_q) & !
-			!$omp shared (counter, Nop, E_out, H_out, struc_quad, S_EH, tot_field) & !, nearfield_distance
+			!$omp shared (counter, Nop, E_out, H_out, struc_quad, S_EH, total_field) & !, nearfield_distance
 			!$omp private (sum_a, r_loc, ngp, object_index)
 			!$omp do
     
@@ -394,10 +400,10 @@ module lib_sie_quad_solver_normal
 			end do !    
 			!$omp end do  
 			!$omp end parallel	
-		elseif (pre_types%evaluation .eq. 'BRDF') then
+		else if ((pre_types%evaluation .eq. 'BRDF_n' ) .or. (pre_types%evaluation .eq. 'BRDF_p')) then		
 		
 			!$omp parallel private( m, n, s, Element_q) & !
-			!$omp shared (counter, Nop, E_out, H_out, struc_quad, S_EH, tot_field) & !, nearfield_distance
+			!$omp shared (counter, Nop, E_out, H_out, struc_quad, S_EH, total_field) & !, nearfield_distance
 			!$omp private (sum_a, r_loc, ngp, object_index)
 			!$omp do
     
@@ -428,7 +434,7 @@ module lib_sie_quad_solver_normal
 			!$omp end parallel
 		else
 			!$omp parallel private( m, n, s, Element_q) & !
-			!$omp shared (counter, Nop, E_out, H_out, struc_quad, S_EH, tot_field) & !, nearfield_distance
+			!$omp shared (counter, Nop, E_out, H_out, struc_quad, S_EH, total_field) & !, nearfield_distance
 			!$omp private (sum_a, r_loc, ngp, object_index)
 			!$omp do
     
@@ -439,6 +445,7 @@ module lib_sie_quad_solver_normal
 				E_out(m)%vector = (/(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)/)
 				H_out(m)%vector = (/(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)/)			
 				r_loc =  input_field(m)%coordinate			
+				
 				ngp = input_field(m)%ngp
 			
 				if (ngp .eq. 50) then					
@@ -453,8 +460,8 @@ module lib_sie_quad_solver_normal
 						E_out(m)%vector = E_out(m)%vector + sum_a(1)%vector
 						H_out(m)%vector = H_out(m)%vector + sum_a(2)%vector
 					end do !n-loop							
-					E_out(m)%vector = input_field(m)%e_field%vector*tot_field - E_out(m)%vector
-					H_out(m)%vector = input_field(m)%h_field%vector*tot_field - H_out(m)%vector
+					E_out(m)%vector = input_field(m)%e_field%vector*total_field - E_out(m)%vector
+					H_out(m)%vector = input_field(m)%h_field%vector*total_field - H_out(m)%vector
 				end if	
 				counter = counter + 1
 			end do !    
@@ -462,7 +469,8 @@ module lib_sie_quad_solver_normal
 			!$omp end parallel
 			end if
 			
-		if ((pre_types%evaluation .eq. 'rcs_n') .or. (pre_types%evaluation .eq. 'rcs_p'))then
+		if ((pre_types%evaluation .eq. 'rcs_n') .or. (pre_types%evaluation .eq. 'rcs_p') .or. &		
+			(pre_types%evaluation .eq. 'BRDF_p') .or. (pre_types%evaluation .eq. 'BRDF_n'))then
 		   
 			open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
 				do m = 1, Nop        

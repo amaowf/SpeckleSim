@@ -14,8 +14,7 @@
 ! 
 ! @author: Liwei Fu	
 	
-module lib_sie_quad_data_container
-	use ml_fmm_type
+module lib_sie_quad_data_container	
 	use lib_sie_type_function
 	use lib_sie_data_container
 		
@@ -61,7 +60,7 @@ module lib_sie_quad_data_container
 			call set_sphere_parameters_quad()
 			eps_r2 = quad_sp_parameters(1)%eps_r2
 			eps_r1 = quad_sp_parameters(1)%eps_r1
-			call set_local_material_parameters_quad()
+			call set_local_material_parameters_quad()			
 			
 		else if (pre_types%object .eq. 'surface') then	
 			allocate(quad_sf_parameters(number_objects))	
@@ -84,7 +83,7 @@ module lib_sie_quad_data_container
 		
 		shift%point = (/0.0, 0.0, 1300.0e-9/)		
 		do m = 1, number_objects			
-			quad_sf_parameters(m)%D(1:2) = surface_length !
+			quad_sf_parameters(m)%D(1:2) = geometry_p(1) !
 			quad_sf_parameters(m)%D(3) = 0.0
 			quad_sf_parameters(m)%centroid%point = (m-1)*shift%point
 			quad_sf_parameters(m)%np = Np 
@@ -105,14 +104,14 @@ module lib_sie_quad_data_container
 		do m = 1, number_objects
 			quad_sp_parameters(m)%D = 400.0e-9
 			quad_sp_parameters(m)%centroid%point = shift%point*(m-1)
-			quad_sp_parameters(m)%nt = 32!     128!168! 512 !  2688 !  672  ! 168!32!
-			quad_sp_parameters(m)%np = 98! 386! 506! 1538!      8066 !  2018 !98  506!98! 
+			quad_sp_parameters(m)%nt =32!   168! 512!  2688 !  672  ! 128!
+			quad_sp_parameters(m)%np =98!   506! 1538! 8066 !  2018 ! 386!
 			quad_sp_parameters(m)%eps_r2 = eps_r2_main !(-16.075, -0.442342)! 
 			quad_sp_parameters(m)%eps_r1 = (1.0, 0.0)
 			
 			write(str1,'(I5)') quad_sp_parameters(m)%Nt
-			File_NodeVector = 'E'//trim(adjustl(str1))//'_ppQua.txt'				
-			File_ElementIndicies = 'E'//trim(adjustl(str1))//'_ttQua.txt'	
+			File_NodeVector = 'E'//trim(adjustl(str1))//'_ppQua.txt'			
+			File_ElementIndicies = 'E'//trim(adjustl(str1))//'_ttQua.txt'				
 		end do
 	end subroutine	
 	
@@ -132,38 +131,36 @@ module lib_sie_quad_data_container
 	
 	subroutine set_evaluation_parameters_quad()
 		implicit none
-		real(dp) :: phi
+		real(dp) :: phi, r_Far
 		
 		evaluation_parameter%tot_field = total_field
 		
-		if ((pre_types%evaluation .eq. 'rcs_p') .or. (pre_types%evaluation .eq. 'rcs_n') .or. (pre_types%evaluation .eq. 'BRDF')) then
+		if ((pre_types%evaluation .eq. 'rcs_p') .or.  (pre_types%evaluation .eq. 'rcs_n') .or. &
+			(pre_types%evaluation .eq. 'BRDF_p') .or. (pre_types%evaluation .eq. 'BRDF_n')) then			
 			select case (pre_types%evaluation)
 				case('rcs_p')
 					phi = 0 !
 				case('rcs_n')
 					phi = PI/2 !
-				case('BRDF')	
+				case('BRDF_p')	
 					phi = 0 !
+				case('BRDF_n')	
+					phi = PI/2 !					
 			end select
-			
-			if (pre_types%evaluation .eq. 'rcs_p') then			
-				phi = 0			
-			else 
-				phi = pi/2
-			end if
-			
+		
+			r_far = 5.0e+9
 			!theta
 			evaluation_parameter%dim_a(1) = theta_start
 			evaluation_parameter%dim_a(2) = theta_end
 			evaluation_parameter%dim_b(1) = phi! phi_start
 			evaluation_parameter%dim_b(2) = phi! phi_end			
-			evaluation_parameter%N_dim(1) = 501
+			evaluation_parameter%N_dim(1) = 301
 			evaluation_parameter%N_dim(2) = 1
 			if (pre_types%object .eq. 'sphere') then
-				evaluation_parameter%dim_c = sum(quad_sp_parameters(1:number_objects)%D)*1e+5 !
+				evaluation_parameter%dim_c = sum(quad_sp_parameters(1:number_objects)%D)*r_Far !
 			else if (pre_types%object .eq. 'surface') then				
 				evaluation_parameter%dim_c = (sum(quad_sf_parameters(1:number_objects)%D(1)) &
-				+ sum(quad_sf_parameters(1:number_objects)%D(2)))*1e+5 !
+				+ sum(quad_sf_parameters(1:number_objects)%D(2)))*r_Far !
 			else 
 				print*, 'Wrong calculation type'
 				call exit				
@@ -210,11 +207,11 @@ module lib_sie_quad_data_container
 				open(unit = 80, file = File_NodeVector, status = 'old', action='read') !Small_
 				read(80, *) node_vector
 				close(80)
-       
+				
 				!Array of node index for each element
 				open(unit = 81, file = File_ElementIndicies, status = 'old', action='read') !Small_
 				read(81, *) elements_indicies
-				close(81) 				
+				close(81) 
 				
 				if (m .gt. 1)then
 					p = p + quad_sp_parameters(m-1)%Np				
@@ -232,14 +229,16 @@ module lib_sie_quad_data_container
 				if (m .gt. 1) then
 					q = q + quad_sp_parameters(m-1)%Nt
 					do j = 1, quad_sp_parameters(m)%Nt !tt
+					   allocate(struc_quad%elements(j + q)%vertices(8))
 						struc_quad%elements(j + q)%vertices = elements_indicies(3:10, j) + p
 					end do
 				else 	
-					do j = 1, quad_sp_parameters(m)%Nt !tt						
-						struc_quad%elements(j)%vertices = elements_indicies(3:10, j) 
-					end do
-				end if					
-			
+					do j = 1, quad_sp_parameters(m)%Nt !tt				
+						 allocate(struc_quad%elements(j)%vertices(8))
+						struc_quad%elements(j)%vertices = elements_indicies(3:10, j) 					   	
+					end do				
+				end if	
+				
 				deallocate(node_vector)
 				deallocate(elements_indicies)				
 			end do
@@ -300,11 +299,13 @@ module lib_sie_quad_data_container
 								
 				if (m .gt. 1) then
 					q = q + quad_sf_parameters(m-1)%Nt
-					do j = 1, quad_sf_parameters(m)%Nt !tt
+					do j = 1, quad_sf_parameters(m)%Nt !
+					   allocate(struc_quad%elements(j + q)%vertices(8))
 						struc_quad%elements(j + q)%vertices = elements_indicies(3:10, j) + p
 					end do
 				else 	
-					do j = 1, quad_sf_parameters(m)%Nt !tt						
+					do j = 1, quad_sf_parameters(m)%Nt !tt		
+						allocate(struc_quad%elements(j)%vertices(8))
 						struc_quad%elements(j)%vertices = elements_indicies(3:10, j) 
 					end do
 				end if					
@@ -325,7 +326,7 @@ module lib_sie_quad_data_container
 		integer :: Nl(2), N_element(2)
 		real(dp), dimension(:, :), allocatable :: zz 
 		real :: dL(2), n_tmp(2)
-		character(len = 50) :: file_c
+		character(len = 60) :: file_c
 	
 		open(unit = 92, file = file_name_surface, status = 'old', action='read')
 			read(92, *) surface_length_quad(1:2)
@@ -386,19 +387,97 @@ module lib_sie_quad_data_container
  
 		tt(1:10, 1:Nt) = tt_temp(1:10, 1:Nt)
 		
-		!file_c = trim('tt_'//adjustl(file_name_surface))		
-		!open (unit = 203, file = file_c, action = "write",status = 'replace')
-		!	write (203, '(10(i8, tr3))') (tt(:, j), j = 1, Nt)   
-		!close(203)
+		file_c = trim('tt_quad_'//adjustl(file_name_surface))		
+		open (unit = 203, file = file_c, action = "write",status = 'replace')
+			write (203, '(10(i8, tr3))') (tt(:, j), j = 1, Nt)   
+		close(203)
   !
-		!file_c = trim('pp_'//adjustl(file_name_surface))
-		!open (unit=200,file =	file_c, action="write",status = 'replace')!   
-		!	write (200, '(i5, tr5, e19.12, tr5, e19.12, tr5, e19.12, tr5)') (j, pp(:, j), j = 1, Np)   
-		!close(200)		
+		file_c = trim('pp_quad_'//adjustl(file_name_surface))
+		open (unit=200,file =	file_c, action="write",status = 'replace')!   
+			write (200, '(i5, tr5, e19.12, tr5, e19.12, tr5, e19.12, tr5)') (j, pp(:, j), j = 1, Np)   
+		close(200)		
 		
 		deallocate(zz, tt_temp, ss)		
 		return
 		
 	end subroutine Sorting_quad
+	
+	subroutine sorting_quad_new()
+		implicit none
+		
+		integer, dimension(:, :), allocatable :: tt_temp, ss 
+		integer :: i, j
+		integer :: Nl(2), N_element(2), Nop
+		real(dp), dimension(:, :), allocatable :: zz 
+		real :: n_tmp(2)
+		character(len = 60) :: file_c
+	
+		open(unit = 92, file = file_name_surface, status = 'old', action='read')
+			read(92, *) surface_length_quad(1:2)
+			read(92, *) n_tmp(1:2)
+		close(92)
+		
+		Nl = int(n_tmp)		
+		Nop = Nl(2)*Nl(1)		
+		allocate(zz(3, Nop))
+	
+		open(unit = 92, file = file_name_surface, status = 'old', action='read')
+			read(92, *) surface_length_quad(1:2)
+			read(92, *) n_tmp(1:2)			
+			read(92, *) ((zz(i, j), i = 1, 3),j = 1, Nop)
+		close(92)
+				
+		Np = 0
+		Nt = 0
+		
+		allocate (ss(Nl(1), Nl(2)))
+		allocate (pp(3, Nl(1)*Nl(2)))
+ 
+		do i = 1, Nl(2) !y
+			do j = 1, Nl(1) !x 
+				Np = Np + 1 ! all the points
+				ss(j, i) = Np      				
+				pp(1, Np) = zz(1, Np) 
+				pp(2, Np) = zz(2, Np) 
+				pp(3, Np) = zz(3, Np) 
+			end do
+		end do   
+		
+		allocate (tt_temp(1:10, 1:Np))
+	
+		do j = 1, Nl(1)-2, 2
+			do i = 1, Nl(2)-2, 2      
+				Nt = Nt + 1 ! for tt     
+				tt_temp(1, Nt) = Nt
+				tt_temp(2, Nt) = 2
+				tt_temp(3, Nt) = ss(j, i) !the first node 
+				tt_temp(4, Nt) = ss(j+1, i) !the second
+				tt_temp(5, Nt) = ss(j+2, i) 
+				tt_temp(6, Nt) = ss(j+2, i+1)
+				tt_temp(7, Nt) = ss(j+2, i+2)
+				tt_temp(8, Nt) = ss(j+1, i+2)
+				tt_temp(9, Nt) = ss(j, i+2)
+				tt_temp(10, Nt) = ss(j, i+1) 
+			end do 
+		end do
+		
+		allocate(tt(1:10, 1:Nt))
+ 
+		tt(1:10, 1:Nt) = tt_temp(1:10, 1:Nt)
+		
+		file_c = trim('tt_quad_'//adjustl(file_name_surface))		
+		open (unit = 203, file = file_c, action = "write",status = 'replace')
+			write (203, '(10(i8, tr3))') (tt(:, j), j = 1, Nt)   
+		close(203)
+  !
+		file_c = trim('pp_quad_'//adjustl(file_name_surface))
+		open (unit=200,file =	file_c, action="write",status = 'replace')!   
+			write (200, '(i5, tr5, e19.12, tr5, e19.12, tr5, e19.12, tr5)') (j, pp(:, j), j = 1, Np)   
+		close(200)		
+		
+		deallocate(zz, tt_temp, ss)		
+		return
+		
+	end subroutine Sorting_quad_new
 	
 end module lib_sie_quad_data_container
