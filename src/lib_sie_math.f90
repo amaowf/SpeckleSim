@@ -249,7 +249,8 @@ module lib_sie_math
 		
 		dx_a = (evaluation_p%dim_a(2) - evaluation_p%dim_a(1))/(n_a-1)
 		
-		if ((evaluation_type .eq. 'rcs_p') .or. (evaluation_type .eq. 'rcs_n') .or. (evaluation_type .eq. 'BRDF'))then
+		if ((evaluation_type .eq. 'rcs_p') .or. (evaluation_type .eq. 'rcs_n') .or. &
+			(evaluation_type .eq. 'BRDF_p') .or. (evaluation_type .eq. 'BRDF_n'))then
 			dx_b = 0.0
 		else
 			dx_b = (evaluation_p%dim_b(2) - evaluation_p%dim_b(1))/(n_b-1)
