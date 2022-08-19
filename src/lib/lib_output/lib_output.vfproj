@@ -49,5 +49,5 @@
 		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
 		<File RelativePath=".\lib_output.f90"/>
-		<File RelativePath="..\..\..\..\..\test\progressBar\progressBar\lib_progressbar.f90"/></Filter></Files>
+		<File RelativePath=".\lib_progressbar.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>
