@@ -30,7 +30,7 @@ contains
   subroutine print_only_u(outputtouser)
     character (len=*) :: outputtouser
 
-    write(*,*)outputtouser
+    write(6,*)outputtouser
   end subroutine print_only_u
 
 
@@ -46,8 +46,8 @@ contains
 
     call get_time_string(dateTimestring)
 
-    write(*,*)trim(dateTimestring)//"Error Message:"
-    write(*,*) errorMessage
+    write(1,*)trim(dateTimestring)//"Error Message:"
+    write(1,*) errorMessage
 
     call print_to_log("Error Message: "//errorMessage)
 
@@ -61,7 +61,7 @@ contains
   subroutine print_u(outputtouser)
     character (len=*) :: outputtouser
 
-    write(*,*) outputtouser
+    write(6,*) outputtouser
 
     call print_to_log(outputtouser)
 
