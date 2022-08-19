@@ -8,20 +8,23 @@ module lib_comsol_reader
     
     contains
     
-    !This subroutine figures out, how many points, and how many triangles are specified by
-    !the comsol file.
-    !To do that the subroutine opens the file and iterates over the lines.
-    !The basic structure of this subroutine is pretty similar to the structure of the
-    !read_comsol_file subroutine. So if you are interested in how this subroutine works
-    !it is recomended to read the comments on how the read_comsol_file subroutine works first.
-    !
-    !@param:    filename_path This is a string type variable, containing the filename and path to that file
-    !
-    !@param:    numb_coord This is an integer type variable. It holds the information on how many points are
-    !           specified, by it's coordinates in the file(This value is 1 based)
-    !
-    !@param:    numb_tri This is an integer type variable. It holds the information on how many triangles are
-    !           specified in the file(This value is 1 based)
+    !>This subroutine figures out, how many points, and how many triangles are specified by
+    !!the comsol file.
+    !!To do that the subroutine opens the file and iterates over the lines.
+    !!The basic structure of this subroutine is pretty similar to the structure of the
+    !!read_comsol_file subroutine. So if you are interested in how this subroutine works
+    !!it is recomended to read the comments on how the read_comsol_file subroutine works first.
+    !!
+    !!@param:    filename_path This is a string type variable, containing the filename and path to that file
+    !!
+    !!@param:    numb_coord This is an integer type variable. It holds the information on how many points are
+    !!           specified, by it's coordinates in the file(This value is 1 based)
+    !!
+    !!@param:    numb_tri This is an integer type variable. It holds the information on how many triangles are
+    !!
+    
+    
+    specified in the file(This value is 1 based)
     subroutine number_of_coordinates_triangels(filename_path, numb_coord,numb_tri)
         implicit none
         !Initialisation, Opening the comsol file [...]
