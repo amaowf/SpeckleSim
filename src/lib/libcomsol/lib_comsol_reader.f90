@@ -1,6 +1,10 @@
-
+!>This module reads a comsol file and stores all the data contained in there in
+!!a data structure(type(structure_tri)), that is later on used in the simulator.
+!!This module extracts the point coordinates as well as the triangel points from the file.
+!!There is no preprocessing of the comsol file required.
 module lib_comsol_reader
     use lib_comsol_string_operations
+    use lib_sie_type_function
     
     implicit none
     
@@ -21,10 +25,7 @@ module lib_comsol_reader
     !!           specified, by it's coordinates in the file(This value is 1 based)
     !!
     !!@param:    numb_tri This is an integer type variable. It holds the information on how many triangles are
-    !!
-    
-    
-    specified in the file(This value is 1 based)
+    !!           specified in the file(This value is 1 based)
     subroutine number_of_coordinates_triangels(filename_path, numb_coord,numb_tri)
         implicit none
         !Initialisation, Opening the comsol file [...]
@@ -114,98 +115,95 @@ module lib_comsol_reader
     end subroutine number_of_coordinates_triangels
     
     
-    !This subroutine reads a comsol file and writes all the data stored in there to a
-    !structure_tri structure. This subroutine is a little bit longer, and probably not
-    !that intuitive. Therefore I divided the subroutine with code-comments in several
-    !parts. Hopefully it got better understandable through that
-    !
-    !How a comsol file is structured:
-    !A comsol file is kind of a text file, that stores Point coordinates and the indexes
-    !of 3 Points, that define a triangle. All the points and triangles together building up the mesh.
-    !At the beginning of the text file is a header. The inforamtions stored in this header
-    !aren't required for our purpose. Therefore we will ignore them.
-    !Before the list of coordinates for each point starts, there is one line containing
-    !the following: "# Mesh point coordinates"
-    !This subroutine searches for this line and starts handling the coordinate list, that
-    !comes below. This means, that in every line are 3 real numbers defining the position
-    !of a point. The numbers are seperated by a blank.
-    !There are no indices, they are defined implicitely by the order of the coordintes.
-    !This means, that the first coordinate triple defines point 1(0 in Comsol, but we add 1 to 
-    !every point indice to be fortran compatible)
-    !After that block there are once again some lines. The information stored by this lines is
-    !also irrelevant for us, so we will ignore them too. We can detect these lines, by the presence
-    !of an #.
-    !The beginning of the list, storing wich points define a triangle is merked by the following line:
-    !"# Elements". The subroutine also searches for that line.
-    !Then it stores all the triangle data. This data is an integer triple, separated by a blank.
-    !
-    !Comsol File example for clarification:
-    !
-    !# Created by COMSOL Multiphysics Fri Jul 29 11:17:54 2022
-    !
-    !
-    !# Major & minor version
-    !0 1 
-    !1 # number of tags
-    !# Tags
-    !5 mesh1 
-    !1 # number of types
-    !# Types
-    !3 obj 
-    !
-    !# --------- Object 0 ----------
-    !
-    !0 0 1 
-    !4 Mesh # class
-    !4 # version
-    !3 # sdim
-    !7360 # number of mesh points
-    !0 # lowest mesh point index
-    !
-    !# Mesh point coordinates <-This is where the header ends
-    !9.7545161008064488e-008 2.4999999999999998e-006 4.9039264020161532e-007 
-    !4.900868465586856e-008 2.5000000000000002e-006 4.9759235687141682e-007 
-    !1.4514233756944688e-007 2.4999999999999998e-006 4.7847016490641793e-007 
-    !1.2149008987738374e-007 2.4573349182922882e-006 4.8501562661587051e-007
-    ![... Many more node coordinates ...]
-    !-1.6844492662404178e-007 -2.4574051918749036e-006 -4.7077203261729685e-007 
-    !-1.9134171618254481e-007 -2.5000000000000006e-006 -4.6193976625564335e-007 
-    !-9.754516100806413e-008 -2.5000000000000006e-006 -4.9039264020161521e-007 
-    !-1.4514233756944653e-007 -2.5000000000000006e-006 -4.7847016490641772e-007 
-    !
-    !1 # number of element types    <- This # is detected
-    !
-    !# Type #0
-    !
-    !3 tri # type name
-    !
-    !
-    !3 # number of nodes per element
-    !14592 # number of elements
-    !# Elements <- This is where the triangle data starts
-    !2 0 3 
-    !0 1 7 
-    !3 0 7 
-    !3 7 6 
-    !7 1 8 
-    !1 9 8 
-    ![... Many more triangles ...]
-    !7353 7358 7355 
-    !7358 7359 7355 
-    !7359 7357 7356 
-    !7355 7359 7356 
-    !
-    !0 # number of geometric entity indices <-This # markes the end
-    !
-    !All these numbers are stored in matrixes. These matrixes are then stored in the struct given
-    !
-    !@param:    filename_path A string type variable, that stores the filename and path to the comsol file
-    !
-    !@param:    struct A struct of the type structure_tri. In this struct all the data is stored in the end
-    !           and you can use it from there
-    
-    
-
+    !>This subroutine reads a comsol file and writes all the data stored in there to a
+    !!structure_tri structure. This subroutine is a little bit longer, and probably not
+    !!that intuitive. Therefore I divided the subroutine with code-comments in several
+    !!parts. Hopefully it got better understandable through that
+    !!
+    !!How a comsol file is structured:
+    !!A comsol file is kind of a text file, that stores Point coordinates and the indexes
+    !!of 3 Points, that define a triangle. All the points and triangles together building up the mesh.
+    !!At the beginning of the text file is a header. The inforamtions stored in this header
+    !!aren't required for our purpose. Therefore we will ignore them.
+    !!Before the list of coordinates for each point starts, there is one line containing
+    !!the following: "# Mesh point coordinates"
+    !!This subroutine searches for this line and starts handling the coordinate list, that
+    !!comes below. This means, that in every line are 3 real numbers defining the position
+    !!of a point. The numbers are seperated by a blank.
+    !!There are no indices, they are defined implicitely by the order of the coordintes.
+    !!This means, that the first coordinate triple defines point 1(0 in Comsol, but we add 1 to 
+    !!every point indice to be fortran compatible)
+    !!After that block there are once again some lines. The information stored by this lines is
+    !!also irrelevant for us, so we will ignore them too. We can detect these lines, by the presence
+    !!of an #.
+    !!The beginning of the list, storing wich points define a triangle is merked by the following line:
+    !!"# Elements". The subroutine also searches for that line.
+    !!Then it stores all the triangle data. This data is an integer triple, separated by a blank.
+    !!
+    !!Comsol File example for clarification:
+    !!
+    !!    # Created by COMSOL Multiphysics Fri Jul 29 11:17:54 2022
+    !!    
+    !!    
+    !!    # Major & minor version
+    !!    0 1 
+    !!    1 # number of tags
+    !!    # Tags
+    !!    5 mesh1 
+    !!    1 # number of types
+    !!    # Types
+    !!    3 obj 
+    !!    
+    !!    # --------- Object 0 ----------
+    !!     
+    !!    0 0 1 
+    !!    4 Mesh # class
+    !!    4 # version
+    !!    3 # sdim
+    !!    7360 # number of mesh points
+    !!    0 # lowest mesh point index
+    !!    
+    !!    # Mesh point coordinates <-This is where the header ends
+    !!    9.7545161008064488e-008 2.4999999999999998e-006 4.9039264020161532e-007 
+    !!    4.900868465586856e-008 2.5000000000000002e-006 4.9759235687141682e-007 
+    !!    1.4514233756944688e-007 2.4999999999999998e-006 4.7847016490641793e-007 
+    !!    1.2149008987738374e-007 2.4573349182922882e-006 4.8501562661587051e-007
+    !!    [... Many more node coordinates ...]
+    !!    -1.6844492662404178e-007 -2.4574051918749036e-006 -4.7077203261729685e-007 
+    !!    -1.9134171618254481e-007 -2.5000000000000006e-006 -4.6193976625564335e-007 
+    !!    -9.754516100806413e-008 -2.5000000000000006e-006 -4.9039264020161521e-007 
+    !!    -1.4514233756944653e-007 -2.5000000000000006e-006 -4.7847016490641772e-007 
+    !!    
+    !!    1 # number of element types    <- This # is detected
+    !!    
+    !!    # Type #0
+    !!    
+    !!    3 tri # type name
+    !!    
+    !!    
+    !!    3 # number of nodes per element
+    !!    14592 # number of elements
+    !!    # Elements <- This is where the triangle data starts
+    !!    2 0 3 
+    !!    0 1 7 
+    !!    3 0 7 
+    !!    3 7 6 
+    !!    7 1 8 
+    !!    1 9 8 
+    !!    [... Many more triangles ...]
+    !!    7353 7358 7355 
+    !!    7358 7359 7355 
+    !!    7359 7357 7356 
+    !!    7355 7359 7356 
+    !!    
+    !!    0 # number of geometric entity indices <-This # markes the end
+    !!
+    !!All these numbers are stored in matrixes. These matrixes are then stored in the struct given
+    !!
+    !!@param:    filename_path A string type variable, that stores the filename and path to the comsol file
+    !!
+    !!@param:    struct A struct of the type structure_tri. In this struct all the data is stored in the end
+    !!           and you can use it from there
     subroutine read_comsol_file(filename_path, struct)
         implicit none
         !Initialisation, Opening the comsol file [...]

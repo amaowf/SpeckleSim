@@ -484,3 +484,4 @@ Debug_WIN
 *.u2d
 
 release*
+/Documentation

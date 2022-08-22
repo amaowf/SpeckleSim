@@ -10,6 +10,7 @@
     !!You can use the hide_progress_bar function. Now you can print any message
     !!you want. After calling show_progress_bar, the progress bar will be visible again, 
     !!underneath everything, that was printed in between.
+    !!Please use the lib_output functions to control the progress bar!!!
     
     
     module lib_progressbar

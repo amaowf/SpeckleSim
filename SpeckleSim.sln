@@ -41,6 +41,11 @@ Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "libjson", "src\lib\libjson\
 EndProject
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "lib_output", "src\lib\lib_output\lib_output.vfproj", "{F3F9CED7-C285-49BA-B08C-2576BF25CDE7}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C5079D49-7E9F-4485-B124-982ACB5D91D8}"
+	ProjectSection(SolutionItems) = preProject
+		Doxyfile = Doxyfile
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

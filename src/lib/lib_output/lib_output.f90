@@ -5,9 +5,12 @@
 !!log file without any more coding required.
 module lib_output
 
+use lib_progressbar
+
 implicit none
 
 character (len=255) :: filePathAndName= "SpeckleSimulator.log"
+logical :: progressbar = .FALSE.
 
 
 
@@ -30,7 +33,13 @@ contains
   subroutine print_only_u(outputtouser)
     character (len=*) :: outputtouser
 
-    write(6,*)outputtouser
+    if(progressbar == .TRUE.)then
+        call hide_progress_bar()
+        write(6,*) outputtouser
+        call show_progress_bar()
+    else
+        write(6,*) outputtouser
+    endif
   end subroutine print_only_u
 
 
@@ -45,9 +54,16 @@ contains
     character (len=50) :: dateTimestring
 
     call get_time_string(dateTimestring)
-
-    write(1,*)trim(dateTimestring)//"Error Message:"
-    write(1,*) errorMessage
+    
+    if(progressbar == .TRUE.)then
+        call hide_progress_bar()
+        write(1,*)trim(dateTimestring)//"Error Message:"
+        write(1,*) errorMessage
+        call show_progress_bar()
+    else
+        write(1,*)trim(dateTimestring)//"Error Message:"
+        write(1,*) errorMessage
+    endif
 
     call print_to_log("Error Message: "//errorMessage)
 
@@ -60,8 +76,14 @@ contains
   !!        and to the logfile.
   subroutine print_u(outputtouser)
     character (len=*) :: outputtouser
-
-    write(6,*) outputtouser
+    
+    if(progressbar == .TRUE.)then
+        call hide_progress_bar()
+        write(6,*) outputtouser
+        call show_progress_bar()
+    else
+        write(6,*) outputtouser
+    endif
 
     call print_to_log(outputtouser)
 
@@ -111,6 +133,60 @@ contains
     timeString = trim(readableDate)//" at "//trim(readableTime)//" -> "
 
   end subroutine get_time_string
+  
+  !>This subroutine creates the progress bar.
+  !!If you have a progress bar running, you can still use the print functions above.
+  !!This won't destroy the progress bar, everything you are printing is printed
+  !!above the progress bar.
+  !!If you use only the write or print funktions provided by fortran, this
+  !!will mess up your output.
+  !!
+  !!@param: pbName This is the process-Name, that is shown in realtion with
+  !!         the progress bar. This is a string variable. Only the first 15
+  !!         characters will be displayed
+  subroutine create_progressbar(pbName)
+    character (len=*)::pbName
+    if(progressbar == .TRUE.) return
+    call init_progress_bar(pbName)
+    progressbar = .TRUE.
+  end subroutine create_progress_bar
+  
+  !>If the process shown by the progress bar is progressing you can
+  !!submit the new progress value with this function. And the progress
+  !!bar will be updated accordingly.
+  !!
+  !!@param: percVal This is an integer type variable. You have to submit a
+  !!         value in percent. So allowed are numbers from 1,2,3...99,100
+  !!         if the value is 100, the progress bar will be closed automatically
+  subroutine update_progressbar(percVal)
+    integer :: percVal
+    
+    if(progressbar == .FALSE.) return
+    call update_progress_bar(percVal)
+    if(percVal >= 100)then
+        progressbar = .FALSE.
+    endif
+  end subroutine update_progressbar
+  
+  !>This subroutine closes the progress bar. Normally you don't need to call this
+  !!subroutine. But if your process ends for any reason with less then 100% progress,
+  !!you can call this subroutine and the progress bar will be closed.
+  !!But in every other case, you do not need to call it.
+  subroutine end_progressbar()
+    if(progressbar == .FALSE.) return
+    call end_progress_bar()
+    progressbar = .FALSE.
+  end subroutine end_progressbar
+  
+  !>Do not use this subroutine.
+  !!This subroutine should only be used, in case, that the progress bar is doing strange things.
+  !!So if the format of the progress bar on any point sucks, you can try to call this subroutine.
+  !!But if everythings works like expected, don't touch this.
+  subroutine reset_progressbar()
+    call reset_progress_bar()
+    progressbar = .FALSE.
+  end subroutine reset_progressbar
+    
 
 
 end module lib_output
