@@ -48,6 +48,6 @@
 		<Filter Name="Header Files" Filter="fi;fd;h;inc"/>
 		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
-		<File RelativePath="..\..\..\plottingtest\PlottingTest\PlottingTest\lib_gnuplot_heatmap.f90"/>
-		<File RelativePath="..\..\..\plottingtest\PlottingTest\PlottingTest\lib_gnuplot_lineplot.f90"/></Filter></Files>
+		<File RelativePath=".\lib_gnuplot_heatmap.f90"/>
+		<File RelativePath=".\lib_gnuplot_lineplot.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>
