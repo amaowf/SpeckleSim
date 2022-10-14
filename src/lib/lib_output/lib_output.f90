@@ -41,6 +41,21 @@ contains
         write(6,*) outputtouser
     endif
   end subroutine print_only_u
+  
+  !>This subroutine reads a user input string from the standard input.
+  !!The subroutine also doesn't store any log messages.
+  !!
+  !!@param: The input from the user
+  subroutine read_only_u(userString)
+    character (len=*) :: userString
+    if(progressbar == .TRUE.)then
+        call hide_progress_bar()
+        read(6,*) userString
+        call show_progress_bar()
+    else
+        write(6,*) userString
+    endif
+  end subroutine read_only_u
 
 
   !>This subroutine prints error messages. It additionally figures out the actual
@@ -89,6 +104,30 @@ contains
 
 
   end subroutine print_u
+  
+  !>This subroutine reads the user input to the standard input.
+  !!If logEN is set to .TRUE. it will also store the user input in the log file.
+  !!
+  !!@param userString A character type parameter, that stores the user input string afterwards
+  !!
+  !!@param logEN A logical type parameter, that specifies, if the user input should be stored in the log file.
+  subroutine read_u(userString, logEN)
+    character (len=*) :: userString
+    logical ::logEN
+    
+    if(progressbar == .TRUE.)then
+        call hide_progress_bar()
+        read(6,*) userString
+        call show_progress_bar()
+    else
+        write(6,*) userString
+    endif
+    
+    if(logEN == .TRUE.)then
+        call print_to_log("User input: <"//userString//">")
+    endif
+    
+  end subroutine read_u
 
 
   !>This function writes strings to the logfile. It opens the file specified before
