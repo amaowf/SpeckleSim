@@ -1,3 +1,7 @@
+!>This module contains subroutines to save the simultion data in hdf5 files.
+!!Therefore the hdf5 library is required.
+!!When trying to compile this please make shure, that your include paths are setup properly
+!!And that your compiler creates an 64 bit executable. 32 bit won't work with a 64 bit hdf5 library
 module lib_sie_export
     use hdf5
     
@@ -88,16 +92,31 @@ module lib_sie_export
         CALL H5Tcreate_f(H5T_COMPOUND_F, real_complex_size, sample_type_id, error)
         CALL H5Tinsert_f( sample_type_id, "r", 0, h5kind_to_type(dp,H5_REAL_KIND), error)
         CALL H5Tinsert_f( sample_type_id, "i", real_size, h5kind_to_type(dp,H5_REAL_KIND), error)
+        if(error /= 0) then
+            write(*,*)"Error while creating hdf5 complex data type..."
+            write(*,*)"...Exiting. Nothing was stored!"
+            return
+        endif
         !create dataspaces
         CALL h5screate_simple_f(2, dims, X_space_id, error)
         CALL h5screate_simple_f(2, dims, Y_space_id, error)
         CALL h5screate_simple_f(2, dims, Z_space_id, error)
         CALL h5screate_simple_f(1, dimsWL, WL_space_id, error)
+        if(error /= 0) then
+            write(*,*)"Error while creating hdf5 dataspaces"
+            write(*,*)"...Exiting. Nothing was stored!"
+            return
+        endif
         ! create datasets
         CALL H5Dcreate_f(file_id, "data_x",  sample_type_id,X_space_id, X_set_id, error)
         CALL H5Dcreate_f(file_id, "data_y",  sample_type_id,Y_space_id,Y_set_id, error)
         CALL H5Dcreate_f(file_id, "data_z",  sample_type_id,Z_space_id,Z_set_id, error)
         CALL H5Dcreate_f(file_id, "wavelength",  H5T_NATIVE_DOUBLE,WL_space_id,WL_set_id, error)  
+        if(error /= 0) then
+            write(*,*)"Error while creating hdf5 datasets"
+            write(*,*)"...Exiting. Nothing was stored!"
+            return
+        endif
         !Write data to the datasets
         cpointer = C_LOC(dat_x(1,1))
         CALL H5Dwrite_f(X_set_id, sample_type_id, cpointer ,error)
@@ -107,6 +126,9 @@ module lib_sie_export
         CALL H5Dwrite_f(Z_set_id, sample_type_id, cpointer ,error)
         cpointer = C_LOC(wl)
         CALL H5Dwrite_f(WL_set_id, H5T_NATIVE_DOUBLE, cpointer ,error)
+        if(error /= 0) then
+            write(*,*)"Error while writing to hdf5 file"
+        endif
         !close everything...
         CALL h5dclose_f(X_set_id, error)
         CALL h5sclose_f(X_space_id, error)
