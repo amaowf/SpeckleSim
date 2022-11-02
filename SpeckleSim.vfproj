@@ -51,6 +51,7 @@
 		<Filter Name="speckle_common">
 		<File RelativePath=".\src\lib_sie_constants.f90"/>
 		<File RelativePath=".\src\lib_sie_data_container.f90"/>
+		<File RelativePath=".\src\lib_sie_export.f90"/>
 		<File RelativePath=".\src\lib_sie_integration_points.f90"/>
 		<File RelativePath=".\src\lib_sie_lookup_table.f90"/>
 		<File RelativePath=".\src\lib_sie_math.f90"/>
