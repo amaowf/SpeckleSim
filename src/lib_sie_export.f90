@@ -37,14 +37,14 @@ module lib_sie_export
         complex(dp), dimension(:,:),allocatable,target::dat_x,dat_y,dat_z
         type(C_PTR) :: cpointer
         integer(8) :: real_size, real_complex_size
-    
+        
         wl(1) = wavelength
         
         dimensions_of_field_x =size(e_field,1)
         dimensions_of_field_y =size(e_field,2)
         dims(1) = dimensions_of_field_x
         dims(2) = dimensions_of_field_y
-    
+        
         if(dimensions_of_field_x <= 0 .or. dimensions_of_field_y <= 0)then
             write(*,*)"Error: Output E-Field empty"
             return
@@ -52,34 +52,33 @@ module lib_sie_export
         
         real_size = storage_size(1_dp)/8
         real_complex_size = 2* real_size
-    
+        
         !Splitting up the e-field in the x,y and z components
         allocate(dat_x(dimensions_of_field_x,dimensions_of_field_y))
-    
+        
         do, i = 1,dimensions_of_field_x
             do, j = 1,dimensions_of_field_y
                 dat_x(i,j) = e_field(i,j)%vector(1)
             end do
         end do
-    
+        
         allocate(dat_y(dimensions_of_field_x,dimensions_of_field_y))
-    
+        
         do, i = 1,dimensions_of_field_x
             do, j = 1,dimensions_of_field_y
                 dat_y(i,j) = e_field(i,j)%vector(2)
             end do
         end do
-    
+        
         allocate(dat_z(dimensions_of_field_x,dimensions_of_field_y))
-    
+        
         do, i = 1,dimensions_of_field_x
             do, j = 1,dimensions_of_field_y
                 dat_z(i,j) = e_field(i,j)%vector(3)
             end do
         end do
-    
-        !Here starts the actual hdf5 Library stuff...
         
+        !Here starts the actual hdf5 Library stuff...
         CALL h5open_f(error)
         CALL h5fcreate_f(f_name, H5F_ACC_TRUNC_F, file_id, error)
         if(error /= 0) then
