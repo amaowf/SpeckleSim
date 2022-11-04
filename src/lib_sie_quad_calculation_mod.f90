@@ -124,6 +124,9 @@ module lib_sie_quad_calculation_mod
 			case ('MCTF')
 				vector_b(1 : m_edge) = sum_REH(:, 1)
 				vector_b(m_edge + 1 : 2*m_edge) = sum_REH(:, 2)*eta_1*eta_2				
+			case ('MCTF2')
+				vector_b(1 : m_edge) = sum_REH(:, 1)/(eta_1*eta_2)
+				vector_b(m_edge + 1 : 2*m_edge) = sum_REH(:, 2)*eta_1*eta_2
 			case ('ICTF')
 				print*, 'ICIF'
 				eta_a = (eta_1 + eta_2)/2

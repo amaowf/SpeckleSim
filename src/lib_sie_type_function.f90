@@ -150,6 +150,7 @@ module lib_sie_type_function
 		real(dp) :: phi_in
 		real(dp) :: k_in(3)
 		real(dp) :: E_in(3) !amplitude
+		character(len = 5) :: pol
 	end type lib_sie_illumination_parameter
 	
 	type w_matrix

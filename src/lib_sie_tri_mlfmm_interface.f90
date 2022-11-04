@@ -199,18 +199,18 @@ module lib_sie_tri_mlfmm_interface
 		complex(dp), dimension(:), allocatable :: vector_x_PMCHWT, vector_x_MCTF
 		!
 		character(len = 50) :: dummy_character
-		logical :: x_nititial_file
+		logical :: x_initial_file
 		integer :: dummy_number, m
 		real(dp) :: x_initial_re, x_initial_im
 		
 		allocate(vector_x(2*m_pairs), vector_x_PMCHWT(2*m_pairs), vector_x_MCTF(2*m_pairs))
 		allocate(vector_b(2*m_pairs))		
 		
-		x_nititial_file = .false.
+		x_initial_file =  .false. !.true. !
 		
-		if (x_nititial_file) then		
+		if (x_initial_file) then		
 		
-			open(unit = 81, file = 'Result_SEH_tri_MCTF.txt', status = 'old', action='read') !							
+			open(unit = 81, file = 'Result_SEH_tri_ICTF.txt', status = 'old', action='read') !							
 				read(81, *) dummy_character, dummy_number
 				read(81, *) dummy_character, dummy_number								
 				do m = 1, 2*m_pairs					
@@ -231,7 +231,7 @@ module lib_sie_tri_mlfmm_interface
 			vector_x(1:m_pairs) = x_initial
 			vector_x(m_pairs + 1 : 2*m_pairs) =x_initial				
 		end if
-		print*, 'initial vector x(25)', vector_x(25)
+		
 	end subroutine lib_sie_ml_fmm_get_init_vector_x_tri !		
 	
 	subroutine lib_sie_ml_fmm_save_vector_x_tri(vector_x)        

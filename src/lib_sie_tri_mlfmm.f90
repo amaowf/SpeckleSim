@@ -336,8 +336,7 @@ module lib_sie_tri_mlfmm
 	!	end do
 	!	error = abs((tmp-sum_a)/tmp)					
 	!end function
-
-
+	
 	
 	subroutine Lagrange_Interpolation(pp, K_m, K_D, Fn_scs, ff_inter)
 		use libmath		
@@ -433,12 +432,12 @@ module lib_sie_tri_mlfmm
 		complex(dp), dimension(2), intent(out) :: sum_r
 		complex(dp), dimension(2) :: eps_d, my_d, kd	
 		complex(dp) :: sum_a, sum_b, sum_c
-		complex(dp) :: eta_a
+		complex(dp) :: a_lc(2), d_lc(2)
       integer :: Ns, i
 		
 		eps_d = (/eps_1, eps_2/)*im*Omega
-		eta_a = (eta_1 + eta_2)/2
 		
+		call formulation_coefficient(a_lc, d_lc)
 		sum_a = (0.0, 0.0)
 		sum_b = (0.0, 0.0)
 		sum_c = (0.0, 0.0)
@@ -477,16 +476,22 @@ module lib_sie_tri_mlfmm
 		end do			
 		
 		select case(pre_types%formulation)
-			!case('PMCHWT')
-				!	sum_r(1) = sum_r(1) 
-				!	sum_r(2) = sum_r(2) 				
+			case('PMCHWT')
+					sum_r(1) = sum_r(1) 
+					sum_r(2) = sum_r(2) 				
 			case('PMCHWT-S')
 				sum_r(2) = sum_r(2)*eta_1
 			case('MCTF')
 				sum_r(2) = sum_r(2)*eta_1*eta_2
 			case('ICTF')
 				sum_r(1) = sum_r(1)/eta_a
-				sum_r(2) = sum_r(2)*eta_a
+				sum_r(2) = sum_r(2)*eta_a				
+			!case('MCTF2')
+			!	sum_r(1) = sum_r(1)/(eta_1*eta_2)
+			!	sum_r(2) = sum_r(2)*(eta_1*eta_2)	
+			case('MCTF2')
+				sum_r(1) = sum_r(1)*a_lc(1)/eta_1
+				sum_r(2) = sum_r(2)*d_lc(1)*eta_1
 		end select
 		
 	end subroutine
@@ -576,9 +581,7 @@ module lib_sie_tri_mlfmm
 			fn_scs%b_nm%item(2)%item(i) = dot_product(transfer_phi(i, 1:3), sum_b)   !k2, at Ns+1: fy2
 		end do !
 	end subroutine RT_function_SCSArr_New
-	
-
-    
+ 
 	function TL_km_arr_II(r_ab, K_m)result(TL)
       integer, intent(in) :: K_m    !Lm is the order limit of the polynomials, N is the sampling points on the sphere
       real(dp), intent(in) :: r_ab(3)

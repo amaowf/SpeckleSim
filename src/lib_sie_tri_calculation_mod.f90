@@ -48,7 +48,7 @@ module lib_sie_tri_calculation_mod
 	public :: lib_sie_tri_input_field_calculation
 	public :: precalculation_fn
 	public :: data_import_tri
-
+	public :: formulation_coefficient
 	!test functions
 	!public :: test_Iq_L	
 	!public :: test_K3q
@@ -345,7 +345,8 @@ module lib_sie_tri_calculation_mod
 					end do
 				end if
 			end do		
-		else if ((calc_p(5) .eq. 3) .or. (calc_p(5) .eq. 4))then
+		!else if ((calc_p(5) .eq. 3) .or. (calc_p(5) .eq. 4))then
+		else if ((calc_p(5) .ge. 3) .and. (calc_p(5) .le. 5))then			
 			do m = 1, m_pairs
 				do ot = 1, 2
 					!tri_sf_parameters(1) is hard coded for test, has to be changed for multiple surface files. 
@@ -373,17 +374,40 @@ module lib_sie_tri_calculation_mod
 		
 	end subroutine 
 	
+	subroutine	formulation_coefficient(a_lc, d_lc)
+		complex(dp), intent(out) :: a_lc(2), d_lc(2) ! for 
+		real(dp) :: x, y
+		x = 1.0
+		y = 0.50
+		
+		a_lc(1) = 2*x*eta_1/(eta_1 + y*eta_2)
+		a_lc(2) = 2*x*eta_2/(eta_1 + y*eta_2)
+		d_lc(1) = (eta_1 + y*eta_2)/(2*x*eta_1)
+		d_lc(2) = (eta_1 + y*eta_2)/(2*x*eta_2)
+		
+		!Based on MCTF
+		
+		!a_lc(1) = x*eta_1
+		!a_lc(2) = y*eta_2
+		!d_lc(1) = y*eta_2
+		!d_lc(2) = x*eta_1
+		
+		return
+	end subroutine formulation_coefficient
 	
-	! Here the vector_b is multiplied by eta_0 to improve the convergence of GMRES
+!!*********** 07.09.2022 for test. Combine the equation tegether.		
 	subroutine get_vector_b_tri(vector_b)
 		implicit none
       ! dummy		
 		double complex, dimension(:), allocatable, intent(inout) :: vector_b
 		complex(dp), dimension(4) :: sum_EH!
-		complex(dp) :: eta_a!
+		complex(dp) :: a_lc(2), d_lc(2) ! for 
 		integer :: m, ngp
 	
-		ngp = ng		
+		ngp = ng
+		
+		call formulation_coefficient(a_lc, d_lc)
+		
 		select case (pre_types%formulation)
 			 case ('PMCHWT')
 				do m = 1, m_pairs	
@@ -408,21 +432,20 @@ module lib_sie_tri_calculation_mod
 					call incident_field_tri_general(m, ngp, Sum_EH) !
 					vector_b(m) = 1/eta_1*Sum_EH(1) + Sum_EH(4)
 					vector_b(m + m_pairs) = -Sum_EH(3) + eta_1*Sum_EH(2)
+				end do		
+			case ('MCTF2')! CTF was removed, instead MCTF2 was built
+				do m = 1, m_pairs							
+					call incident_field_tri_general(m, ngp, Sum_EH) !
+					vector_b(m) = a_lc(1)/eta_1*Sum_EH(1)
+					vector_b(m + m_pairs) = d_lc(1)*eta_1*Sum_EH(2)
 				end do
-			case ('CTF')
-					do m = 1, m_pairs							
-						call incident_field_tri_general(m, ngp, Sum_EH) !
-						vector_b(m) = 1/eta_1*Sum_EH(1)
-						vector_b(m + m_pairs) = eta_1*Sum_EH(2)
-					end do
-			case ('ICTF')
-				print*, 'ICIF'				
-					do m = 1, m_pairs						
-						call incident_field_tri_general(m, ngp, Sum_EH) !
-						eta_a = (eta_1 + eta_2)/2
-						vector_b(m) = Sum_EH(1)/eta_a  
-						vector_b(m + m_pairs) = Sum_EH(2)*eta_a
-					end do		
+			case ('ICTF')				
+				do m = 1, m_pairs						
+					call incident_field_tri_general(m, ngp, Sum_EH) !
+					!eta_a = (eta_1 + eta_2)/2
+					vector_b(m) = Sum_EH(1)/eta_a  
+					vector_b(m + m_pairs) = Sum_EH(2)*eta_a
+				end do
 			case ('CNF')
 				do m = 1, m_pairs						
 					call incident_field_tri_general(m, ngp, Sum_EH) !
@@ -436,13 +459,79 @@ module lib_sie_tri_calculation_mod
 					vector_b(m + m_pairs) = -Sum_EH(3)*eps_1/(eps_1 + eps_2)
 				end do
 		end select
-		
-		!open (unit=206, file = 'vector_b.txt', action="write",status = 'replace')				
+!		
+		!open (unit=206, file = 'vector_b_MCTF2.txt', action="write",status = 'replace')				
 		!		do m = 1, m_pairs*2
 		!			write (206, '(201(es19.12, tr5))') vector_b(m)
 		!		end do
 		!close(206)
 	end subroutine get_vector_b_tri
+		
+	! Here the vector_b is multiplied by eta_0 to improve the convergence of GMRES
+	!subroutine get_vector_b_tri(vector_b)
+	!	implicit none
+ !     ! dummy		
+	!	double complex, dimension(:), allocatable, intent(inout) :: vector_b
+	!	complex(dp), dimension(4) :: sum_EH!		
+	!	integer :: m, ngp
+	!	
+	!	ngp = ng
+	!	
+	!	select case (pre_types%formulation)
+	!		 case ('PMCHWT')
+	!			do m = 1, m_pairs	
+	!				call incident_field_tri_general(m, ngp, Sum_EH) !
+	!				vector_b(m) = Sum_EH(1)
+	!				vector_b(m + m_pairs) = Sum_EH(2)
+	!			end do
+	!		 case ('PMCHWT-S')
+	!			do m = 1, m_pairs	
+	!				call incident_field_tri_general(m, ngp, Sum_EH) !
+	!				vector_b(m) = Sum_EH(1)
+	!				vector_b(m + m_pairs) = Sum_EH(2)*eta_1
+	!			end do
+	!		 case ('MCTF')												
+	!			do m = 1, m_pairs	
+	!				call incident_field_tri_general(m, ngp, Sum_EH) !
+	!				vector_b(m) = Sum_EH(1)
+	!				vector_b(m + m_pairs) = Sum_EH(2)*eta_1*eta_2
+	!			end do
+	!		case ('JMCFIE')
+	!			do m = 1, m_pairs	
+	!				call incident_field_tri_general(m, ngp, Sum_EH) !
+	!				vector_b(m) = 1/eta_1*Sum_EH(1) + Sum_EH(4)
+	!				vector_b(m + m_pairs) = -Sum_EH(3) + eta_1*Sum_EH(2)
+	!			end do
+	!		case ('MCTF2')! CTF was removed, instead MCTF2 was built
+	!				do m = 1, m_pairs							
+	!					call incident_field_tri_general(m, ngp, Sum_EH) !
+	!					vector_b(m) = 1/(eta_1*eta_2)*Sum_EH(1)
+	!					vector_b(m + m_pairs) = eta_1*eta_2*Sum_EH(2)
+	!				end do
+	!		case ('ICTF')
+	!			print*, 'ICIF'				
+	!				do m = 1, m_pairs						
+	!					call incident_field_tri_general(m, ngp, Sum_EH) !
+	!					!eta_a = (eta_1 + eta_2)/2
+	!					vector_b(m) = Sum_EH(1)/eta_a  
+	!					vector_b(m + m_pairs) = Sum_EH(2)*eta_a
+	!				end do		
+	!		case ('CNF')
+	!			do m = 1, m_pairs						
+	!				call incident_field_tri_general(m, ngp, Sum_EH) !
+	!				vector_b(m) = Sum_EH(4)
+	!				vector_b(m + m_pairs) = -Sum_EH(3)
+	!			end do		
+	!		case('MNMF')			
+	!			do m = 1, m_pairs						
+	!				call incident_field_tri_general(m, ngp, Sum_EH) !					
+	!				vector_b(m) = Sum_EH(4)*my_1/(my_1 + my_2)
+	!				vector_b(m + m_pairs) = -Sum_EH(3)*eps_1/(eps_1 + eps_2)
+	!			end do
+	!	end select
+	!	
+	!	
+	!end subroutine get_vector_b_tri
 	
 	function lib_sie_tri_get_impedance_edges(m, n, r_ref)result(D_mat_tmp)
 		use lib_sie_tri_data_container
@@ -450,7 +539,8 @@ module lib_sie_tri_calculation_mod
 		
 		integer, intent(in) :: m, n
 		real(dp), intent(in) :: r_ref
-		complex(dp), dimension(2,2) :: D_mat_tmp
+		complex(dp), dimension(2,2) :: D_mat_tmp		
+
 		
 		!dummy
 		real(dp) :: r_ob 
@@ -565,7 +655,7 @@ module lib_sie_tri_calculation_mod
 					end do
 				end do
 					
-			case ('CTF')
+			case ('MCTF2') ! CTF was removed, instead MCTF2 was built
 				do t = 1, 2
 					do s = 1, 2!
 						p = struc_tri%neighbours(m)%element(t)
@@ -573,15 +663,15 @@ module lib_sie_tri_calculation_mod
 						r_ob = vec_len(struc_tri%midpoint(p)%point - struc_tri%midpoint(q)%point)  
 						if (r_ob .gt. 1.5*r_ref) then	
 							singular_type = 'normal'							
-							call tri_impedance_building_CTF(  m, n, t, s, ngp, zz, singular_type)							
+							call tri_impedance_building_MCTF2(  m, n, t, s, ngp, zz, singular_type)							
 						else							
 							singular_type = 'singular'
-							call tri_impedance_building_CTF(  m, n, t, s, ngp, zz, singular_type)	
+							call tri_impedance_building_MCTF2(  m, n, t, s, ngp, zz, singular_type)	
 						end if
 						D_mat_tmp(1, 1) = D_mat_tmp(1, 1) + zz(1)
 						D_mat_tmp(1, 2) = D_mat_tmp(1, 2) + zz(2)
 						D_mat_tmp(2, 1) = D_mat_tmp(2, 1) + zz(3)
-						D_mat_tmp(2, 2) = D_mat_tmp(1, 1)						
+						D_mat_tmp(2, 2) = D_mat_tmp(2, 2) + zz(4)						
 					end do
 				end do	
 					
@@ -1810,7 +1900,9 @@ module lib_sie_tri_calculation_mod
 		return
 	end subroutine tri_impedance_building_JMCFIE
 	
-	subroutine tri_impedance_building_CTF(m, n, tt, ll, ngp, zz, singular_type)
+		
+	!The same as ICTF, just for test so that a compact expression can be used.
+	subroutine tri_impedance_building_MCTF2(m, n, tt, ll, ngp, zz, singular_type)
 		implicit none
 		integer, intent(in) :: m, n, tt, ll
 		integer, intent(in) :: ngp
@@ -1818,11 +1910,14 @@ module lib_sie_tri_calculation_mod
 		complex(dp), dimension(:), allocatable, intent(out) :: zz
 		!dummy
 		integer :: md, pp, qq		
+		complex(dp) :: a_lc(2), d_lc(2)
 		type(result_element_JMCFIE) :: rv_1, rv_2
 		type(fn_rwg) :: fn, fm
 		logical :: Iqs_L
 		
-		allocate(zz(3))
+		allocate(zz(4))
+		
+		call formulation_coefficient(a_lc, d_lc)
 		
 		fm = structure_edges(m)%fn_ot(tt)%fn
 		fn = structure_edges(n)%fn_ot(ll)%fn
@@ -1845,11 +1940,54 @@ module lib_sie_tri_calculation_mod
 			md = 2
 			rv_2 = tri_outer_integration(  fm, fn, ngp, md)
 		end if
-		zz(1) = rv_1%Tt + rv_2%Tt !z_11
-		zz(2) = -(rv_1%Kt/eta_1 + rv_2%Kt/eta_2) !z_12
-		zz(3) = eta_1*rv_1%Kt + eta_2*rv_2%Kt !z_21
-		!z_22 = z11
-	end subroutine tri_impedance_building_CTF
+		zz(1) = rv_1%Tt*a_lc(1) + rv_2%Tt*a_lc(2) !z_11
+		zz(2) = -(rv_1%Kt*a_lc(1)/eta_1 + rv_2%Kt*a_lc(2)/eta_2)!z_12
+		zz(3) = eta_1*d_lc(1)*rv_1%Kt + rv_2%Kt*eta_2*d_lc(2) !z_21
+		zz(4)	= d_lc(1)*rv_1%Tt + d_lc(2)*rv_2%Tt
+		
+	end subroutine tri_impedance_building_MCTF2	
+	
+	!!Not efficient
+	!subroutine tri_impedance_building_MCTF2(m, n, tt, ll, ngp, zz, singular_type)
+	!	implicit none
+	!	integer, intent(in) :: m, n, tt, ll
+	!	integer, intent(in) :: ngp
+	!	character(len=20), intent(in) :: singular_type
+	!	complex(dp), dimension(:), allocatable, intent(out) :: zz
+	!	!dummy
+	!	integer :: md, pp, qq		
+	!	type(result_element_JMCFIE) :: rv_1, rv_2
+	!	type(fn_rwg) :: fn, fm
+	!	logical :: Iqs_L
+	!	
+	!	allocate(zz(4))
+	!	
+	!	fm = structure_edges(m)%fn_ot(tt)%fn
+	!	fn = structure_edges(n)%fn_ot(ll)%fn
+	!	
+	!	if (singular_type .eq. 'singular') then
+	!		pp = struc_tri%neighbours(m)%element(tt)
+	!		qq = struc_tri%neighbours(n)%element(ll)					
+	!		if ((pp == qq)) then
+	!			Iqs_L = .true.
+	!		else
+	!			Iqs_L = .false.
+	!		end if		
+	!		md = 1		
+	!		rv_1 = tri_outer_integration_singular(  fm, fn, ngp, md, Iqs_L)
+	!		md = 2
+	!		rv_2 = tri_outer_integration_singular(  fm, fn, ngp, md, Iqs_L)			
+	!	else
+	!		md = 1		
+	!		rv_1 = tri_outer_integration(  fm, fn, ngp, md)
+	!		md = 2
+	!		rv_2 = tri_outer_integration(  fm, fn, ngp, md)
+	!	end if
+	!	zz(1) = rv_1%Tt/eta_2 + rv_2%Tt/eta_1 !z_11
+	!	zz(2) = -(rv_1%Kt + rv_2%Kt)/(eta_2*eta_1) !z_12
+	!	zz(3) = eta_1*eta_2*(rv_1%Kt + rv_2%Kt) !z_21
+	!	zz(4)	= eta_2*rv_1%Tt + eta_1*rv_2%Tt
+	!end subroutine tri_impedance_building_MCTF2
 	
 	subroutine tri_impedance_building_ICTF(m, n, tt, ll, ngp, zz, singular_type)
 		implicit none
@@ -1859,14 +1997,14 @@ module lib_sie_tri_calculation_mod
 		complex(dp), dimension(:), allocatable, intent(out) :: zz
 		!dummy
 		integer :: md, pp, qq
-		complex(dp) ::  eta_a !
+		!complex(dp) ::  eta_a !
 		type(result_element_JMCFIE) :: rv_1, rv_2
 		type(fn_rwg) :: fn, fm
 		logical :: Iqs_L
 		
 		allocate(zz(4))
 		
-		eta_a = (eta_1 + eta_2)/2
+		!eta_a = (eta_1 + eta_2)/2
 		
 		fm = structure_edges(m)%fn_ot(tt)%fn
 		fn = structure_edges(n)%fn_ot(ll)%fn
@@ -1893,6 +2031,7 @@ module lib_sie_tri_calculation_mod
 		zz(2) = -(rv_1%Kt + rv_2%Kt)/eta_a !z_12
 		zz(3) = (rv_1%Kt + rv_2%Kt)*eta_a !z_21
 		zz(4) = (rv_1%Tt/eta_1 + rv_2%Tt/eta_2)*eta_a !z_22
+		
 	end subroutine tri_impedance_building_ICTF
 	
 	subroutine tri_impedance_building_CNF(m, n, tt, ll, ngp, zz, singular_type)
@@ -2548,7 +2687,7 @@ module lib_sie_tri_calculation_mod
 	subroutine lib_sie_tri_input_field_calculation(field_input)!result()	
 		implicit none
 		
-		integer :: n1, n2, m, ngp!
+		integer :: n1, n2, m, n, ngp!
 		
 		real(dp) :: r_local_tmp(3), I_00 
 		type(vector_c) :: E_00
@@ -2580,12 +2719,18 @@ module lib_sie_tri_calculation_mod
 				ngp = ngp_near_field_distance_tri(r_media(m)%point, nearfield_distance)
 				Field_input(m)%h_field%vector = cross_c(k1*illumination_p%k_in, Field_input(m)%e_field%vector)/(my_1*c0)
 				r_media(m)%ngp = ngp
-			end do
+			end do	
 		else 
 			print*, 'Not a proper illumination method'
 			call exit
 		end if
-			
+		
+		!open (unit = 203, file = 'input_field.txt', action = "write",status = 'replace')
+		!	do m = 1, n1*n2        
+		!		write (203, '(1001(E19.12, tr3))') 	(real(field_input(m)%e_field%vector(n)), n= 1, 3), &
+		!		(imag(field_input(m)%e_field%vector(n)), n= 1, 3)	
+		!	end do
+		!close(203)
 		!deallocate(r_local)
 		return
 	end subroutine
@@ -2624,15 +2769,15 @@ module lib_sie_tri_calculation_mod
 					ngp_arr(p) = 3
 				else 
 					ngp_arr(p) = 6
-					print*, 'ngp=6', ngp_arr(p)
+					!print*, 'ngp=6', ngp_arr(p)
 				end if
 				ngp = maxval(ngp_arr)			
 		!else if (pre_types%object .eq. 'surface')then		
 		else if ((calc_p(5) .eq. 2) .or. (calc_p(5) .eq. 3))then			
 			ngp = 3
 		else
-			print*, 'not a properly defined object type'
 			ngp = 6
+			!print*, 'not a properly defined object type'			
 		end if		
 		return
 	end function
@@ -2763,10 +2908,10 @@ module lib_sie_tri_calculation_mod
       call Quadrature_tri(ngp, a, b, w)
       do t = 1, 2
          Sum_a(t)%Vector = (/(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)/)
-      end do  
-				
+		end do  
+		
 		do m = 1, m_pairs
-			do t = 1, 2
+			do t = 1, 2				
 				call fn_parameter(struct, m, t, p1, p2, vm_t, Len_m, area_m)
 				pos_neg = -1*(((t-1)*t)-1)            
 				dfm = pos_neg*(Len_m)	!/area_m
@@ -2776,14 +2921,17 @@ module lib_sie_tri_calculation_mod
 					R_norm = vec_len(r_a - r_q)
 					call Diver_Green(k1, R_norm, Greenf, DG_SS)
 					GradG = (r_a - r_q)/R_norm*DG_SS					
+      
 					K_tmp = im*Omega*my_1*SEH(m)*f_mat*Greenf - &
 						cross_c(SEH(m+m_pairs)*f_mat, GradG) - 1/(im*Omega*eps_1)*SEH(m)*dfm*GradG	
+					
 					Sum_a(1)%Vector = Sum_a(1)%Vector - K_tmp*w(i)!TRF				
 					K_tmp = im*Omega*eps_1*SEH(m+m_pairs)*f_mat*Greenf &
 						- 1/(im*Omega*my_1)*SEH(m+m_pairs)*dfm*GradG + SEH(m)*cross_c(f_mat, GradG)
 					Sum_a(2)%Vector = Sum_a(2)%Vector - K_tmp*w(i)!TRF
-				end do            
-			end do !loop i 
+				end do !loop i    
+
+			end do !loop t						
 		end do
       return
 	end subroutine Integration_scattered_field_tri	

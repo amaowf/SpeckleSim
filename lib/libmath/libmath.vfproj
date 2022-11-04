@@ -24,7 +24,7 @@
 				<Tool Name="VFPostBuildEventTool"/></Configuration>
 		<Configuration Name="Debug|x64" ConfigurationType="typeStaticLibrary">
 				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="$(SolutionDir)\src\lib\libmath_external\x64\Debug" PreprocessorDefinitions="_EXCLUDE_GENERATED_FUNCTIONS_" WarnInterfaces="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL"/>
-				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="$(SolutionDir)\src\lib\libmath_external\x64\Debug" AdditionalDependencies="libmath_external.lib"/>
+				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="$(SolutionDir)\lib\libmath_external\x64\Debug" AdditionalDependencies="libmath_external.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
 				<Tool Name="VFCustomBuildTool"/>

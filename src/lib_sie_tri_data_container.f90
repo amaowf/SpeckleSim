@@ -54,13 +54,12 @@ module lib_sie_tri_data_container
 		!shift%point = (/0.0, 0.0, 500.0e-9/)
 		do m = 1, number_objects			
 			call read_pp_tt_file_tri(struc_tri_surfaces(m))
-			tri_sf_parameters(m)%D(1) = 2*geometry_p(1)
+			tri_sf_parameters(m)%D(1) = geometry_p(1)
 			tri_sf_parameters(m)%D(2) = geometry_p(2)
 			tri_sf_parameters(m)%centroid%point = surface_center
 			tri_sf_parameters(m)%eps_r2 = eps_r2_main 
 			tri_sf_parameters(m)%eps_r1 = (1.0, 0.0)
-		end do	
-		!eps_r2 = (-17.2, -0.498) !(-8.0, - 1.66) !(2.50, 0.0)!
+		end do		
 	end subroutine
 	
 	subroutine set_sphere_parameters_tri()
@@ -79,7 +78,7 @@ module lib_sie_tri_data_container
 			!n_disc = 6, 18, 66, 1026, 4098, 16386, 65538, 80500 
 			!n_disc = 66(nel=128), 258(nel = 512), 1026(nel = 2048)
 			!n_disc = 4098(nel = 8192), 16386(nel=32768)
-			tri_sp_parameters(m)%n_disc = n_disc! 1026!  4098! 258!  65538 ! 16386!     66! 
+			tri_sp_parameters(m)%n_disc = n_disc! 
 		end do	
 		
 		!when the spheres have different size and disretization
@@ -109,8 +108,9 @@ module lib_sie_tri_data_container
 		
 		evaluation_parameter%tot_field = total_field
 		
-		if ((pre_types%evaluation .eq. 'rcs_p') .or.  (pre_types%evaluation .eq. 'rcs_n') .or. &
-			(pre_types%evaluation .eq. 'BRDF_p') .or. (pre_types%evaluation .eq. 'BRDF_n')) then			
+		!if ((pre_types%evaluation .eq. 'rcs_p') .or.  (pre_types%evaluation .eq. 'rcs_n') .or. &
+		!	(pre_types%evaluation .eq. 'BRDF_p') .or. (pre_types%evaluation .eq. 'BRDF_n')) then			
+		if ((calc_p(4) .ge. 4) .and. (calc_p(4) .le. 7)) then	
 			select case (pre_types%evaluation)
 				case('rcs_p')
 					phi = 0 !
@@ -130,24 +130,12 @@ module lib_sie_tri_data_container
 			evaluation_parameter%N_dim(1) = sampling_na  !for theta
 			evaluation_parameter%N_dim(2) = sampling_nb	!for phi
 			
-			
 			if (calc_p(7) .eq. 2) then
-				r_far = -5.0e+9
+				evaluation_parameter%dim_c = position_c
 			else 
-				r_far = 5.0e+9
+				evaluation_parameter%dim_c = -position_c
 			end if
 			
-			!evaluation_parameter%dim_c = r_far
-			if (calc_p(5) .eq. 1) then !'sphere'
-				evaluation_parameter%dim_c = -sum(tri_sp_parameters(1:number_objects)%D)*r_far
-			else if (calc_p(5) .ge. 2) then !surface
-				evaluation_parameter%dim_c = -(sum(tri_sf_parameters(1:number_objects)%D(1)) &
-					+ sum(tri_sf_parameters(1:number_objects)%D(2)))*r_far !			
-			else 
-				print*, 'Wrong calculation type'
-				call exit				
-			end if	
-		
 		else
 			evaluation_parameter%N_dim(1) = sampling_na
 			evaluation_parameter%N_dim(2) = sampling_nb
@@ -210,6 +198,8 @@ module lib_sie_tri_data_container
 		else 
 			print*, 'Not a proper object type.'
 		end if
+		
+		eta_a = (eta_1 + eta_2)/2
 		
 		!if (data_structure_type .eq. 'top_down') then
 		!	tree_l_max = 4	
@@ -301,7 +291,8 @@ module lib_sie_tri_data_container
 					end if oeffnen_1
 		close( unit=25 )  !Datei schliessen
 	end subroutine read_file_array_size_returned_tri
-	
+
+
 	!The mesh file from COMSOL has to be treated 
 	!Especially, the index of the corner in tt file begins at zero,
 	!which is not programmed in this simulator
@@ -368,5 +359,135 @@ module lib_sie_tri_data_container
 	close(in_unit)	
 	
 	end subroutine
+
+	!When surface is calculated with scanning
+	!Multiple pp and tt files with enumeration will be generated
+	subroutine read_file_meshed_comsol_shift()
+		implicit none
+		
+		character(len = 100) :: file_name_out, file_name_in
+		character(len=8) :: file_nr 
+		integer :: in_unit,  mm, out_unit , n, m, s, m_shift, n_shift
+		integer, allocatable, dimension(:, :) :: tt
+		real(kind = 8), allocatable, dimension(:, :) :: pp
+		real(kind = 8) :: dshift_a, dshift_b, shift_a, shift_b
+		real(kind = 8), dimension(:, :), allocatable :: surface_center
+		
+		intrinsic :: max
+		integer :: Nt, Np, calc_plane
+	
+		in_unit = 20
+		out_unit = 30	
+		
+		write(*,*) 'Give the file name of the surface'
+		read(*,'(A)') file_name_surface
+		
+		write(*,*) 'Give the evaluation plane!'
+		write(*,*) '1 for xz-plane, 2 for xy-plane, 3 for yz-plane'
+		
+		read(*,'(I3.3)')  calc_plane
+		
+		file_name_in = trim(adjustl(file_name_surface))//'_pp.mphtxt'	
+	 
+		call read_file_array_size_returned_tri(file_name_in, Np)
+	 
+		print*, 'Np=', Np
+	 
+		allocate(pp(3, Np))
+	 
+		open(unit = in_unit, file = trim(file_name_in))	
+		do mm = 1, Np
+			read(in_unit, *) pp(1:3, mm)		
+		end do
+		close(in_unit)	
+		
+		dshift_a = 250.0e-9
+		dshift_b = 50.0e-9
+		shift_a = -1250e-9
+		shift_b = -250.0e-9;
+		m_shift = 11
+		n_shift = 11
+		allocate(surface_center(m_shift*n_shift, 3))
+		do n = 1, n_shift			
+			do m = 1, m_shift				
+				s = m + (n-1)*m_shift				
+				if (calc_plane .eq. 1) then
+					!tri_sf_parameters(s)%centroid%point = (/shift_a, shift*0.0, shift_b/)
+					write(file_nr, '(I3.3)') s
+					surface_center(s, 1:3) = (/shift_a + dshift_a*(m-1), dshift_a*0.0, shift_b + dshift_b*(n-1)/)
+					
+					file_name_out = 'pp_'//trim(adjustl(file_name_surface))//'_'//trim(file_nr)//'.txt'		
+					open(unit = out_unit, file = trim(file_name_out))		
+					
+					do mm = 1, Np		
+						!shift the surface position						
+						write(out_unit, *) pp(1:3, mm) + surface_center(s, 1:3)
+					end do	
+					close(out_unit)
+					
+				else if (calc_plane .eq. 2) then
+					!tri_sf_parameters(s)%centroid%point = (/shift_a, shift_b, shift*0.0/)
+					write(file_nr, '(I3.3)') s
+					file_name_out = 'pp_'//trim(adjustl(file_name_surface))//'_'//trim(file_nr)//'.txt'		
+					open(unit = out_unit, file = trim(file_name_out))		
+					do mm = 1, Np		
+						!shift the surface position
+						!pp(1, mm) = pp(1, mm) + shift*(m-1)
+						!pp(2, mm) = pp(2, mm) + shift*(n-1)	
+						!surface_center(s, 1:3) = (/shift*(m-1), shift*(n-1), shift*0.0/)
+						write(out_unit, *) pp(:, mm)		
+					end do	
+					close(out_unit)
+				else if (calc_plane .eq. 3) then
+					!tri_sf_parameters(s)%centroid%point = (/shift*0.0, shift_a, shift_b/)
+					write(file_nr, '(I3.3)') s
+					file_name_out = 'pp_'//trim(adjustl(file_name_surface))//'_'//trim(file_nr)//'.txt'		
+					open(unit = out_unit, file = trim(file_name_out))		
+					do mm = 1, Np		
+						!shift the surface position
+						!pp(2, mm) = pp(2, mm) + shift_a*(m-1)						
+						!pp(3, mm) = pp(3, mm) + shift_b*(n-1)	
+						!surface_center(s, 1:3) = (/shift*0.0, shift*(m-1), shift*(n-1)/)
+						write(out_unit, *) pp(:, mm)		
+					end do	
+					close(out_unit)
+				else
+					print*, 'Not a proper evaluation plane!'
+					call exit
+				end if			
+			end do
+		end do
+		
+		open (unit=206, file = 'surface_center.txt', action="write",status = 'replace')!!!!       	
+			write (206, *) 'm_shift            ', m_shift
+			write (206, *) 'n_shift            ', n_shift
+			do s = 1, n_shift*m_shift
+				write (206, '(201(es19.12, tr5))') surface_center(s, 1:3)
+			end do 	
+		close(206)	
+		
+	
+	file_name_in = trim(adjustl(file_name_surface))//'_tt.mphtxt'
+	call read_file_array_size_returned_tri(file_name_in, Nt)
+	
+	print*, 'Nt=', Nt	
+	allocate(tt(3, Nt))	
+	open(unit = in_unit, file = trim(file_name_in))		
+	do mm = 1, Nt
+		read(in_unit, *) tt(1:3, mm)		
+	end do		
+	close(in_unit)			
+		!	
+	do n = 1, n_shift*m_shift
+		write(file_nr, '(I3.3)') n			
+		file_name_out = 'tt_'//trim(adjustl(file_name_surface))//'_'//trim(file_nr)//'.txt'						
+		open(unit = in_unit, file = trim(file_name_out))	
+		do mm = 1, Nt
+			write(in_unit, *) tt(1:3, mm)+1		
+		end do
+		close(in_unit)	
+	end do
+	
+end subroutine
 	
 end module lib_sie_tri_data_container

@@ -41,7 +41,9 @@ module lib_sie_data_container
 	character (len=100) :: file_out_parameters
 		
 	real(dp) :: theta_start, theta_end, phi_start, phi_end
-	real(dp) :: surface_center(3), geometry_p(2)	
+	real(dp) :: geometry_p(2)	
+	real(dp) :: surface_center(3)
+	real(dp), dimension(:, :), allocatable :: surface_center_arr
 	real(dp) :: position_c, dim_a_min, dim_a_max, dim_b_min, dim_b_max
 	integer :: sampling_na, sampling_nb, n_disc
 	
@@ -87,5 +89,6 @@ module lib_sie_data_container
 	complex(dp), dimension(:), allocatable :: diagonal_element
 	type(lib_tree_spatial_point), dimension(2) :: tree_bounding_box 
 	type(lib_sie_mlfmm_TL_coefficient) :: preCalculated_TL			
+	complex(dp), public :: eta_a
 	
 end module

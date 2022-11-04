@@ -258,7 +258,8 @@ module lib_sie_tri_solver_normal
 		else
 			print*, 'No matching calculation type!'
 			call exit
-		end if		
+		end if
+		
 		call set_evaluation_parameters_tri()
 		
 		!print*, 'Begin to calculate step-II'
@@ -285,19 +286,20 @@ module lib_sie_tri_solver_normal
 		!real(dp) :: r1, r2
 		
 		!dummy
-		integer :: m, Nop, n, ngp, counter		
+		integer :: mm, Nop, n, ngp, counter		
 		type(point) :: r_local
 		type(vector_c), dimension(2) :: sum_aa
 		type(vector_c) :: Hfield_in, Efield_in
 		type(lib_sie_evaluation_point_type), dimension(:), allocatable :: input_field		
 		real(dp), dimension(:), allocatable :: Energy_scat, theta_scatter
-		real(dp) :: dx_a
+		real(dp) :: dx_a, center(3)
 				
 		counter=0 
 		
-		call get_evaluation_points_domain(evaluation_parameter, eps_r1, eps_r2, calc_p, geometry_p, r_media)		
+		call get_evaluation_points_domain(evaluation_parameter, eps_r1, eps_r2, calc_p, geometry_p, surface_center, r_media)		
 		call lib_sie_tri_input_field_calculation(input_field)			
 		Nop = size(input_field)
+				
 		print*, 'Nop=', Nop	
 
 		allocate(E_out(Nop), H_out(Nop), Energy_scat(Nop))
@@ -305,67 +307,87 @@ module lib_sie_tri_solver_normal
 		if ((pre_types%evaluation .eq. 'BRDF_n' ) .or. (pre_types%evaluation .eq. 'BRDF_p') )then
 			allocate(theta_scatter(evaluation_parameter%N_dim(1)))			
 			dx_a = (evaluation_parameter%dim_a(2) - evaluation_parameter%dim_a(1))/(evaluation_parameter%N_dim(1)-1)
-			do m = 1, evaluation_parameter%N_dim(1)
-				theta_scatter(m) = evaluation_parameter%dim_a(1) + dx_a*(m-1)
-			end do
-		end if			
+			do mm = 1, evaluation_parameter%N_dim(1)
+				theta_scatter(mm) = evaluation_parameter%dim_a(1) + dx_a*(mm-1)				
+				!Intensity_GB_surface(m) =  !should be normalized by the incident energy.
+			end do			
+		end if	
+		
 		
 		if ((pre_types%evaluation .eq. 'rcs_p') .or. (pre_types%evaluation .eq. 'rcs_n')) then		
-			!$omp parallel private (m, sum_aa, Efield_in, Hfield_in, ngp) &  
+			!$omp parallel private (mm, sum_aa, Efield_in, Hfield_in, ngp) &  
 			!$omp shared (m_pairs, Nop, counter, E_out, H_out, S_EH, struc_tri, Energy_scat, r_media) 			
 			!$omp do
-			do m = 1, Nop ! for all r
+			do mm = 1, Nop ! for all r
 				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
 					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
 				end if				
 				ngp = 3				
-				call Integration_scattered_field_tri(r_media(m)%point, struc_tri, ngp, S_EH, Sum_aa) !
-				E_out(m)%vector =  sum_aa(1)%vector ! 
-				H_out(m)%vector =  sum_aa(2)%vector ! 
-				Energy_scat(m) = dot_product(E_out(m)%vector, E_out(m)%vector)*4*pi*vec_len(r_media(m)%point)**2! &
+				call Integration_scattered_field_tri(r_media(mm)%point, struc_tri, ngp, S_EH, Sum_aa) !
+				E_out(mm)%vector =  sum_aa(1)%vector ! 
+				H_out(mm)%vector =  sum_aa(2)%vector ! 
+				Energy_scat(mm) = dot_product(E_out(mm)%vector, E_out(mm)%vector)*4*pi*vec_len(r_media(mm)%point)**2! &
 				counter = counter + 1
 			end do
 			!$omp end do
 			!$omp end parallel  
 		else if ((pre_types%evaluation .eq. 'BRDF_n' ) .or. (pre_types%evaluation .eq. 'BRDF_p')) then		
-			!$omp parallel private (m, n, sum_aa, Efield_in, Hfield_in, ngp) &  
+			!$omp parallel private (mm, n, sum_aa, Efield_in, Hfield_in, ngp) &  
 			!$omp shared (m_pairs, Nop, counter, E_out, H_out, S_EH, struc_tri, Energy_scat, r_media) 		
 			!$omp do
-			do m = 1, Nop ! for all r
+			do mm = 1, Nop ! for all r
 				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
 					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
 				end if				
 				ngp = 3
-				call Integration_scattered_field_tri(r_media(m)%point, struc_tri, ngp, S_EH, Sum_aa)
-				E_out(m)%vector =  sum_aa(1)%vector ! 
-				H_out(m)%vector =  sum_aa(2)%vector ! 							
-				Energy_scat(m) = dot_product(E_out(m)%vector, E_out(m)%vector)*vec_len(r_media(m)%point)**2! &	
-				Energy_scat(m)= Energy_scat(m)/(cos(illumination_p%theta_in)*cos(theta_scatter(m)))
+				call Integration_scattered_field_tri(r_media(mm)%point, struc_tri, ngp, S_EH, Sum_aa)
+				E_out(mm)%vector =  sum_aa(1)%vector ! 
+				H_out(mm)%vector =  sum_aa(2)%vector ! 							
+				Energy_scat(mm) = dot_product(E_out(mm)%vector, E_out(mm)%vector)*vec_len(r_media(mm)%point)**2! &	
+				Energy_scat(mm)= Energy_scat(mm)/(cos(illumination_p%theta_in)*cos(theta_scatter(mm)))
 				counter = counter + 1
 			end do
 			!$omp end do
 			!$omp end parallel  
 			
-		else if ((pre_types%object .eq. 'sphere') .or. (pre_types%object .eq. 'surface')) then
-			!$omp parallel private (m, n, sum_aa, Efield_in, Hfield_in,  ngp) &  
+		else if (pre_types%evaluation .eq. 'cly_field') then
+			!$omp parallel private (mm, n, sum_aa, Efield_in, Hfield_in, ngp) &  
 			!$omp shared (m_pairs, Nop, counter, E_out, H_out, r_media, S_EH, struc_tri)  &
 			!$omp shared (input_field) !, nearfield_D
 			!$omp do
-			do m = 1, Nop ! for all r
+			do mm = 1, Nop ! for all r
 				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
 					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
 				end if
-				
-				if (r_media(m)%media .eq. 2)then				
-					ngp = r_media(m)%ngp						
-					call Integration_scattered_field_tri_within_medium(r_media(m), struc_tri, ngp, S_EH, sum_aa)				
-					E_out(m)%vector(1:3) = sum_aa(1)%vector
-					H_out(m)%vector(1:3) = sum_aa(2)%vector						
+				ngp = 3
+				call Integration_scattered_field_tri(r_media(mm)%point, struc_tri, ngp, S_EH, sum_aa)					
+				E_out(mm)%vector = input_field(mm)%e_field%vector*total_field + sum_aa(1)%vector
+				H_out(mm)%vector = input_field(mm)%h_field%vector*total_field + sum_aa(2)%vector										
+				counter = counter + 1
+			end do	
+			!$omp end do
+			!$omp end parallel  		
+		else
+			!$omp parallel private (mm, n, sum_aa, Efield_in, Hfield_in,  ngp) &  
+			!$omp shared (m_pairs, Nop, counter, E_out, H_out, r_media, S_EH, struc_tri)  &
+			!$omp shared (input_field) !
+			!$omp do
+			
+			do mm = 1, Nop ! for all r				
+				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
+					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
+				end if				
+			!	
+				if (r_media(mm)%media .eq. 2)then				
+					ngp = r_media(mm)%ngp						
+					call Integration_scattered_field_tri_within_medium(r_media(mm), struc_tri, ngp, S_EH, sum_aa)								
+					E_out(mm)%vector(1:3) = sum_aa(1)%vector
+					H_out(mm)%vector(1:3) = sum_aa(2)%vector						
 				else		
-				   ngp = r_media(m)%ngp
-					call Integration_scattered_field_tri(r_media(m)%point, struc_tri, ngp, S_EH, sum_aa)					
-					E_out(m)%vector = input_field(m)%e_field%vector*total_field + sum_aa(1)%vector
-					H_out(m)%vector = input_field(m)%h_field%vector*total_field + sum_aa(2)%vector						
+				   ngp = r_media(mm)%ngp
+					call Integration_scattered_field_tri(r_media(mm)%point, struc_tri, ngp, S_EH, sum_aa)		               
+					E_out(mm)%vector = input_field(mm)%e_field%vector*total_field + sum_aa(1)%vector
+					H_out(mm)%vector = input_field(mm)%h_field%vector*total_field + sum_aa(2)%vector					
 				end if
 				counter = counter + 1
 			end do	
@@ -380,33 +402,36 @@ module lib_sie_tri_solver_normal
 			(pre_types%evaluation .eq. 'BRDF_p') .or. (pre_types%evaluation .eq. 'BRDF_n'))then
 			
 			open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
-				do m = 1, Nop        
-					write (203, '(1001(E19.12, tr3))') Energy_scat(m)        
+				do mm = 1, Nop        
+					write (203, '(1001(E19.12, tr3))') Energy_scat(mm)        
 				end do
 			close(203)
 		else
 			open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
-				do m = 1, Nop        
-					write (203, '(1001(E19.12, tr3))') (real(E_out(m)%vector(n)), n= 1, 3), (imag(E_out(m)%vector(n)), n= 1, 3)  
+				do mm = 1, Nop        
+					write (203, '(1001(E19.12, tr3))')  (real(E_out(mm)%vector(n)), n= 1, 3), (imag(E_out(mm)%vector(n)), n= 1, 3) !(real(H_out(m)%vector(n)), n= 1, 3), (imag(H_out(m)%vector(n)), n= 1, 3)  r_media(m)%point(1), r_media(m)%point(3),
 				end do
 			close(203)
 		end if
+		
 		
 		!open (unit = 203, file = 'test_domain.txt', action = "write",status = 'replace')
 		!	do m = 1, Nop        
 		!		write (203, '(1001(E19.12, tr3))') 	real(r_media(m)%eps_r)
 		!	end do
 		!close(203)
-		
+		!
 		!!Only input field 
 		!********************************
+		
+		!
 		!open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
 		!	do m = 1, Nop        
 		!		write (203, '(1001(E19.12, tr3))') 	(real(input_field(m)%e_field%vector(n)), n= 1, 3), &
 		!		(imag(input_field(m)%e_field%vector(n)), n= 1, 3)	
 		!	end do
 		!close(203)
-		!
+	
 		
 		if (allocated(struc_tri%points))then
 			deallocate(struc_tri%points)
@@ -537,5 +562,10 @@ module lib_sie_tri_solver_normal
 		close(203)
 		
 	end subroutine	
-		
+	
+	
+	!			
+	!	
+	
+	
 end module lib_sie_tri_solver_normal

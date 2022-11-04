@@ -21,8 +21,9 @@
 !#define _DEBUG_
 
 module lib_math_bessel
-    use lib_math_factorial
+    !use lib_math_factorial
     implicit none
+	 
 
     private
 

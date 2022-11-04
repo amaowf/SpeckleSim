@@ -165,7 +165,7 @@ module lib_sie_mlfmm
 		
 		!When k2 is complex, only at the level lmax 
 		!k2 will be considered.
-		if ((abs(imag(k2)) .gt. 0.0) .and. (level .lt. l_max-1))then
+		if ((abs(imag(k2)) .gt. 0.0) .and. (level .lt. l_max))then
 			i = 1
 			hl =  lib_math_hankel_spherical_2(r_h(1), fnu, m)
 			do j = 1, m			

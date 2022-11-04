@@ -166,16 +166,23 @@ module lib_sie_math
 		phi_max = -2*PI
 		
 		if (illumination%k_in(3) .le. 0.0) then
-			factor_lp = -1
+			factor_lp = -1.0
 		else
-			factor_lp = 1
+			factor_lp = 1.0
 		end if			
 		
 		dtheta = (theta_max-theta_min)/(Nx-1)
 		dphi = (phi_max-phi_min)/(Ny-1)
 		
 		k0 = PI*2/illumination%lambda		
-		E_in = illumination%E_in(1:2)
+		if (illumination%pol .eq. 'TM') then		
+			!E_in = illumination%E_in(1:2)
+			E_in = (/1.0, 0.0/)
+		else if (illumination%pol .eq. 'TE') then
+			E_in = (/0.0, 1.0/)
+		else
+			print*, 'Wrong polarization'
+		end if	
 			
 		Ph = 1.0 !for temparory use	
 		E_surf%vector(1:3) = (0.0, 0.0)				
@@ -298,16 +305,17 @@ module lib_sie_math
 		return		
 	end subroutine get_evaluation_points
 	
-	subroutine get_evaluation_points_domain(evaluation_p, eps_r1, eps_r2, calculation_p, geometry_p, r_local)! 		
+	subroutine get_evaluation_points_domain(evaluation_p, eps_r1, eps_r2, calculation_p, geometry_p, surface_center, r_local)! 		
 		type(evaluation_r_media), dimension(:), allocatable, intent(out) :: r_local
 		complex(dp), intent(in) :: eps_r1, eps_r2
-		integer:: calculation_p(8)
+		integer, intent(in):: calculation_p(8)
 		type(lib_sie_evaluation_parameter_type), intent(in) :: evaluation_p
 		real(dp), dimension(:), intent(in) :: geometry_p(2)
+		real(dp), intent(in) :: surface_center(3)
 
 		!dummy
 		real(dp ) :: dx_a, dx_b, ra(3)
-		real(dp) :: phi, theta, wg, hg, dummy
+		real(dp) :: phi, theta, wg, hg, dummy, y
 		integer :: i, j, n_a, n_b, n_rs
 		real(dp), dimension(:), allocatable :: xx, ff
 		
@@ -332,15 +340,48 @@ module lib_sie_math
 					(/evaluation_p%dim_a(2) - dx_a*(j-1), evaluation_p%dim_b(2) - dx_b*(i-1), evaluation_p%dim_c/)
 				end do
 			end do
-		else if (calculation_p(4) .eq. 3)then ! yz-plot      !     
-			do i=1, n_b
-				do j=1, n_a
-					r_local((i-1)*n_a + j)%point=(/evaluation_p%dim_c, evaluation_p%dim_a(2) - dx_a*(j-1), &
-					evaluation_p%dim_b(2) - dx_b*(i-1) /)
+		else if (calculation_p(4) .eq. 3)then ! yz-plot   ! rough surface was not included because it is not necessary.    
+		
+		!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			if (calculation_p(5) .eq. 5)then !cylinder				
+				do i=1, n_b
+					do j=1, n_a
+						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_c, evaluation_p%dim_a(1) + dx_a*(j-1), &
+						evaluation_p%dim_b(1) + dx_b*(i-1)/)
+						ra = r_local((i-1)*n_a+j)%point - surface_center
+						!print*, 'surface_center', surface_center
+						!print*, 'geometry_p(1)=', geometry_p(1)
+						if (abs(ra(3)) .le. geometry_p(1)) then
+							r_local((i-1)*n_a+j)%eps_r = eps_r2
+							r_local((i-1)*n_a+j)%media = 2
+						else 						
+							r_local((i-1)*n_a+j)%eps_r = eps_r1
+							r_local((i-1)*n_a+j)%media = 1						
+						end if
+					end do
 				end do
-			end do
+			else if ((calculation_p(5) .eq. 1) .or. (calculation_p(5) .eq. 4)) then		!sphere	
+				do i=1, n_b
+					do j=1, n_a
+						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_c, evaluation_p%dim_a(1) + dx_a*(j-1), &
+						evaluation_p%dim_b(1) + dx_b*(i-1)/)
+						ra = r_local((i-1)*n_a+j)%point! - surface_center !attention: surface center at 0.0 is assumed. 
+						if (norm2(ra) .le. geometry_p(1)) then
+							r_local((i-1)*n_a+j)%eps_r = eps_r2
+							r_local((i-1)*n_a+j)%media = 2
+						end if
+					end do
+				end do
+			else 		
+				do i=1, n_b
+					do j=1, n_a
+						r_local((i-1)*n_a + j)%point=(/evaluation_p%dim_c, evaluation_p%dim_a(2) - dx_a*(j-1), &
+						evaluation_p%dim_b(2) - dx_b*(i-1) /)
+					end do
+				end do
+			end if
         
-		else if (calculation_p(4) .eq. 1)then ! xz-plot
+		else if (calculation_p(4) .eq. 1)then ! xz-plot, only when  calculation_p(5) less than or equal 5. 
 			if (calculation_p(5) .eq. 3)then !grating
 				wg = geometry_p(1)
 				hg = geometry_p(2)		
@@ -348,7 +389,8 @@ module lib_sie_math
 					do j=1, n_a
 						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_a(1) + dx_a*(j-1), evaluation_p%dim_c, &
 						evaluation_p%dim_b(1) + dx_b*(i-1)/)
-						ra = r_local((i-1)*n_a+j)%point					
+						ra = r_local((i-1)*n_a+j)%point - surface_center
+						!print*, 'surface_center', surface_center
 						if ((abs(ra(1)) .le. wg/2) .and. (ra(3) .le. 0.0)) then
 							r_local((i-1)*n_a+j)%eps_r = eps_r2
 							r_local((i-1)*n_a+j)%media = 2							
@@ -364,12 +406,27 @@ module lib_sie_math
 						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_a(1) + dx_a*(j-1), evaluation_p%dim_c, &
 						evaluation_p%dim_b(1) + dx_b*(i-1)/)
 						ra = r_local((i-1)*n_a+j)%point! - surface_center !attention: surface center at 0.0 is assumed. 
-						if (norm2(ra) .le. geometry_p(1)) then
+						if (norm2(ra) .le. geometry_p(1)) then 
 							r_local((i-1)*n_a+j)%eps_r = eps_r2
 							r_local((i-1)*n_a+j)%media = 2
 						end if
 					end do
-				end do			
+				end do
+			else if (calculation_p(5) .eq. 5)then !cylinder
+				do i=1, n_b
+					do j=1, n_a						
+						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_a(1) + dx_a*(j-1), evaluation_p%dim_c, &
+						evaluation_p%dim_b(1) + dx_b*(i-1)/)
+						ra = r_local((i-1)*n_a+j)%point! - !attention: surface center at 0.0 is assumed. 						
+						if (sqrt(ra(1)**2+ra(3)**2) .le. geometry_p(1)) then 
+							r_local((i-1)*n_a+j)%eps_r = eps_r2
+							r_local((i-1)*n_a+j)%media = 2						
+						else							
+							r_local((i-1)*n_a+j)%eps_r = eps_r1
+							r_local((i-1)*n_a+j)%media = 1
+						end if
+					end do
+				end do
 			else if (calculation_p(5) .eq. 2)then		!rough surface		
 				!The file 'f_boundary_rs.dat' is generated simultaneously when the rough surface is generated
 				open(unit = 115, file = 'f_boundary_rs.dat', status = 'old', action = 'read')
@@ -389,14 +446,24 @@ module lib_sie_math
 					end do
 				end do			
 			end if
-		else if ((calculation_p(4) .ge. 4) .or. (calculation_p(4) .le. 7))then ! 
+		else if ((calculation_p(4) .ge. 4) .and. (calculation_p(4) .le. 7))then ! 
 			phi = evaluation_p%dim_b(1)
 			i = 1		
 			do j = 1, n_a
 				theta = evaluation_p%dim_a(1) + dx_a*(j-1)
 				r_local((i-1)*n_a+j)%point=(/sin(theta)*cos(phi),  &				
 						sin(theta)*sin(phi), cos(theta)/)*evaluation_p%dim_c
-			end do		
+			end do
+		else if (calculation_p(4) .eq. 8)then ! 			
+			do j = 1, n_a !varied theta
+				theta = evaluation_p%dim_a(1) + dx_a*(j-1)
+				do i=1, n_b !y-direction
+					y = evaluation_p%dim_b(1) + dx_b*(i-1)
+					r_local((i-1)*n_a+j)%point(1:3)=(/sin(theta)*evaluation_p%dim_c,  &
+						y, -cos(theta)*evaluation_p%dim_c/)
+					ra = r_local((i-1)*n_a+j)%point
+				end do
+			end do	
 		end if			
 		return		
 	end subroutine get_evaluation_points_domain
