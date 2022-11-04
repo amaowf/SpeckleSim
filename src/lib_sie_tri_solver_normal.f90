@@ -1,4 +1,4 @@
-  !Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
+!Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
 !
 !    This file is part of SpeckleSim.
 !

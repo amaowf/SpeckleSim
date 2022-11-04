@@ -26,7 +26,7 @@
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
 		<Configuration Name="Debug|x64">
 				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" MultiProcessorCompilation="true" Optimization="optimizeDisabled" Parallelization="true" HeapArrays="0" Preprocess="preprocessYes" AdditionalIncludeDirectories="$(SolutionDir)\src;$(SolutionDir)\lib\libtoolbox\x64\Debug;$(SolutionDir)\lib\libmath\x64\Debug;$(SolutionDir)\lib\libmath_external\x64\Debug;$(SolutionDir)\lib\libtree\x64\Debug;$(SolutionDir)\lib\libmlfmm\x64\Debug" OpenMP="OpenMPParallelCode" WarnDeclarations="true" WarnUnusedVariables="true" WarnShape="true" WarnInterfaces="true" Traceback="true" NullPointerCheck="true" BoundsCheck="true" ArrayShapeCheck="true" UninitializedVariablesCheck="true" DescriptorDataTypeCheck="true" DescriptorDataSizeCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL" UseMkl="mklParallel"/>
-				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\lib\libtoolbox\x64\Debug;$(SolutionDir)\lib\libmath\x64\Debug;$(SolutionDir)\lib\libmath_external\x64\Debug;$(SolutionDir)\lib\libtree\x64\Debug;$(SolutionDir)\lib\libmlfmm\x64\Debug" GenerateDebugInformation="true" SubSystem="subSystemConsole" StackReserveSize="100000000" AdditionalDependencies="libmath.lib libmath_external.lib libtoolbox.lib libtree.lib libmlfmm.lib"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\lib\libtoolbox\x64\Debug;$(SolutionDir)\lib\libmath\x64\Debug;$(SolutionDir)\lib\libmath_external\x64\Debug;$(SolutionDir)\lib\libtree\x64\Debug;$(SolutionDir)\lib\libmlfmm\x64\Debug;$(SolutionDir)\lib\libjson\x64\Debug;$(SolutionDir)\lib\libcomsol\x64\Debug;$(SolutionDir)\lib\lib_output\x64\Debug;$(SolutionDir)\lib\lib_gnuplot\x64\Debug" GenerateDebugInformation="true" SubSystem="subSystemConsole" StackReserveSize="100000000" AdditionalDependencies="libmath.lib libmath_external.lib libtoolbox.lib libtree.lib libmlfmm.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
 				<Tool Name="VFCustomBuildTool"/>
@@ -51,7 +51,8 @@
 		<Filter Name="speckle_common">
 		<File RelativePath=".\src\lib_sie_constants.f90"/>
 		<File RelativePath=".\src\lib_sie_data_container.f90"/>
-		<File RelativePath=".\src\lib_sie_export.f90"/>
+		<File RelativePath=".\src\lib_sie_export.f90">
+			<FileConfiguration Name="Debug|x64" ExcludedFromBuild="true"/></File>
 		<File RelativePath=".\src\lib_sie_integration_points.f90"/>
 		<File RelativePath=".\src\lib_sie_lookup_table.f90"/>
 		<File RelativePath=".\src\lib_sie_math.f90"/>
