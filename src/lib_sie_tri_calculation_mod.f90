@@ -2822,9 +2822,11 @@ module lib_sie_tri_calculation_mod
 		end do
 		!print*, 'Efield, Sum_a(1) =', Sum_a(1)
       return
-	end subroutine Integration_scattered_field_tri	
+    end subroutine Integration_scattered_field_tri	
 	
-subroutine Integration_scattered_field_tri_within_medium(r_a, struct, ngp, SEH, Sum_a)
+    ! Bug was found on 24.02.2023
+    ! instead of eps_r eps_2 is used 
+    subroutine Integration_scattered_field_tri_within_medium(r_a, struct, ngp, SEH, Sum_a)
       complex(dp), dimension(:), intent(in) ::  SEH 
       !type(point), intent(in) :: r_a
 		type(structure_tri), intent(in) :: struct
@@ -2835,7 +2837,7 @@ subroutine Integration_scattered_field_tri_within_medium(r_a, struct, ngp, SEH, 
       integer i, t, pos_neg, mm
       real(dp) :: R_norm, Len_m, area_m, dfm 
 		complex(dp) :: GradG(3), Ke_tmp(3), Kh_tmp(3), Greenf, DG_SS, f_mat(3)
-		complex(dp) :: SE, SH, km, eps_r
+		complex(dp) :: SE, SH, km, eps_2
 		real(dp) :: r_q(3), p1(3), p2(3), vm_t(3)
 		real(dp), dimension(100) :: a, b, w	
 		integer :: n_object, m_tmp	
@@ -2845,7 +2847,7 @@ subroutine Integration_scattered_field_tri_within_medium(r_a, struct, ngp, SEH, 
       do t = 1, 2
          Sum_a(t)%Vector = (/(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)/)
       end do  
-		eps_r =	eps_0*r_a%eps_r
+		eps_2 =	eps_0*r_a%eps_r
 		km = k0*sqrt(r_a%eps_r)
 		do mm = 1, m_pairs		
 			SE = -1.0*SEH(mm)
@@ -2862,10 +2864,10 @@ subroutine Integration_scattered_field_tri_within_medium(r_a, struct, ngp, SEH, 
 					GradG = (r_a%point - r_q)/R_norm*DG_SS					
 					
 					Ke_tmp = im*Omega*my_0*SE*f_mat*Greenf - &
-						cross_c(SH*f_mat, GradG) - 1/(im*Omega*eps_r)*SE*dfm*GradG	
+						cross_c(SH*f_mat, GradG) - 1/(im*Omega*eps_2)*SE*dfm*GradG	
 					Sum_a(1)%Vector = Sum_a(1)%Vector - Ke_tmp*w(i)!TRF				
 					
-					Kh_tmp = im*Omega*eps_r*SH*f_mat*Greenf &
+					Kh_tmp = im*Omega*eps_2*SH*f_mat*Greenf &
 						- 1/(im*Omega*my_0)*SH*dfm*GradG + SE*cross_c(f_mat, GradG)
 					Sum_a(2)%Vector = Sum_a(2)%Vector - Kh_tmp*w(i)!TRF
 				end do            
