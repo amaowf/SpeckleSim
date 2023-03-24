@@ -472,13 +472,13 @@ module lib_sie_quad_solver_normal
 		if ((pre_types%evaluation .eq. 'rcs_n') .or. (pre_types%evaluation .eq. 'rcs_p') .or. &		
 			(pre_types%evaluation .eq. 'BRDF_p') .or. (pre_types%evaluation .eq. 'BRDF_n'))then
 		   
-			open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
+			open (unit = 203, file = file_name_output_Efield, action = "write",status = 'replace')
 				do m = 1, Nop        
 					write (203, '(1001(E19.12, tr3))') Energy_scat(m)        
 				end do
 			close(203)
 		else
-			open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
+			open (unit = 203, file = file_name_output_Efield, action = "write",status = 'replace')
 				do m = 1, Nop        
 					write (203, '(1001(E19.12, tr3))') (real(E_out(m)%vector(n)), n= 1, 3), (imag(E_out(m)%vector(n)), n= 1, 3)         
 				end do

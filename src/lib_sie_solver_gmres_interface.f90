@@ -25,6 +25,8 @@ module lib_sie_solver_gmres_interface
    private
 		
 	public :: run_ml_fmm_GMRES_tri
+	public :: lib_sie_solver_GMRES_run
+	public :: prerun_ml_fmm_GMRES_tri_conical_planewaves
    logical :: m_use_ml_fmm
 		
    type(solver_gmres_parameter_type) :: m_gmres_parameter
@@ -37,10 +39,19 @@ module lib_sie_solver_gmres_interface
 		implicit none
 		
 		call set_parameters_tri()		
-		call lib_sie_ml_fmm_precalculation_tri()
-		call lib_sie_solver_gmres_run()
-		!call lib_sie_tri_solver_normal_II()
+		call lib_sie_ml_fmm_precalculation_tri()					
+		call lib_sie_solver_gmres_run()	
 	end subroutine
+	
+	subroutine 	prerun_ml_fmm_GMRES_tri_conical_planewaves()
+		implicit none
+				
+		!dummy		
+		call set_parameters_tri()
+		call lib_sie_ml_fmm_precalculation_tri()
+		 
+	end subroutine
+
 
       ! Argument
       ! ----
@@ -54,18 +65,17 @@ module lib_sie_solver_gmres_interface
       !auxiliary
 		! if any
       m_use_ml_fmm = .false.
-      if (present(use_ml_fmm)) m_use_ml_fmm = use_ml_fmm
-
-      ! init
-      m_gmres_parameter = lib_sie_solver_gmres_get_parameter()!
+      if (present(use_ml_fmm)) m_use_ml_fmm = use_ml_fmm				
+      m_gmres_parameter = lib_sie_solver_gmres_get_parameter()!		
+		
       if (m_use_ml_fmm) then
             m_gmres_callback%calc_vector_b => lib_sie_ml_fmm_calculate_vector_b_tri				
 				m_gmres_callback%preconditioner_left => lib_sie_ml_fmm_preconditioner_left
       end if
-				
+
       m_gmres_callback%get_vector_b => lib_sie_ml_fmm_get_vector_b_tri
       m_gmres_callback%get_vector_x_init => lib_sie_ml_fmm_get_init_vector_x_tri
-      m_gmres_callback%save_vector_x => lib_sie_ml_fmm_save_vector_x_tri
+      m_gmres_callback%save_vector_x => lib_sie_ml_fmm_save_vector_x_tri		
 		m_gmres_callback%internal%backward_error => zgmres_backward_error	
    end subroutine lib_sie_solver_constructor
 		
@@ -117,16 +127,17 @@ module lib_sie_solver_gmres_interface
 			
 		logical :: use_ml_fmm
 		integer :: i
-		!character(len = 100) :: file_out	
 		real :: test_start_sub, test_finish_sub
 		real(dp) :: GMRES_time
+		character(len = 3) :: ix
       ! WALL-time
 		INTEGER :: test_count_start_sub, test_count_finish_sub, test_count_rate_sub
 		   
 		call system_clock(test_count_start_sub, test_count_rate_sub)
 		call cpu_time(test_start_sub)
 		call timestamp()
-		use_ml_fmm = .true.			
+		use_ml_fmm = .true.
+		
 		call lib_sie_solver_constructor(use_ml_fmm)
 		
 		print*, 'm_gmres_parameter%max_iterations', m_gmres_parameter%max_iterations
@@ -136,8 +147,8 @@ module lib_sie_solver_gmres_interface
 			file_out_error = trim(file_out_error)//'_NoP.txt'	
 		end if		
 		
-		open (unit = unit_error, file = file_out_error, action="write", status = 'replace')					
-			
+		open (unit = unit_error, file = file_out_error, action="write", status = 'replace')		
+		
 		call lib_math_solver_gmres_run(m_gmres_parameter, m_gmres_callback, .true.)
 
 		call cpu_time(test_finish_sub)
@@ -148,8 +159,7 @@ module lib_sie_solver_gmres_interface
 		  		
 		print '("GMRES-Time = ",f15.3," mins.")', GMRES_time
 		
-		deallocate(preCalculated_TL%TL, preCalculated_TL%my_LT)
-		
+		!deallocate(preCalculated_TL%TL, preCalculated_TL%my_LT)
 		
 		open (unit=206, file = file_name_output_I, action="write",status = 'replace')		
 			write (206, *) 'n_el,', n_el
@@ -159,8 +169,6 @@ module lib_sie_solver_gmres_interface
 			end do
 		close(206)		
 		close(unit_error)	
-		
-				
 		if (pre_types%object .eq. 'sphere') then			
 			open (unit = 206,file = file_out_parameters, action="write", status = 'replace')!!
 				write (206, *) 'object_type =                  ', pre_types%object
@@ -189,7 +197,21 @@ module lib_sie_solver_gmres_interface
 				write (206, *) 'dc at l_max =                  ', box_at_l%dc
 				write (206, *) 'tree_s_opt  =                  ', tree_s_opt				
 			close(206)
-	else if (pre_types%object .eq. 'surface') then
+		else if (pre_types%object .eq. 'surface') then
+			if (calc_p(1) .eq. 4)then
+				!assuming 'Result_Efield_tri_xz_001.txt'
+				read (file_name_output_I(22:24),*) ix
+				if (ix .eq. '001')then
+					call output_file_GMRES(GMRES_time)
+				end if
+			else
+				call output_file_GMRES(GMRES_time)
+			end if
+		end if
+   end subroutine
+	
+	subroutine output_file_GMRES(GMRES_time)
+		real(dp), intent(in) :: GMRES_time
 		open (unit = 206,file = file_out_parameters, action="write", status = 'replace')!!!
 			write (206, *) 'object_type =                  ', pre_types%object
 			write (206, *) 'formulation_type =             ', pre_types%formulation
@@ -217,9 +239,6 @@ module lib_sie_solver_gmres_interface
 			write (206, *) 'tree_s_opt  =                  ', tree_s_opt
 			write (206, *) 'm_pairs  =                  ', m_pairs
 		close(206)		
-	end if
-			
-			
-   end subroutine
+	end
 
 end module lib_sie_solver_gmres_interface

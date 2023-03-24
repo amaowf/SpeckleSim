@@ -1,4 +1,4 @@
-!Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
+  !Copyright (C) 2021  Liwei Fu <liwei.fu@ito.uni-stuttgart.de>
 !
 !    This file is part of SpeckleSim.
 !
@@ -44,12 +44,11 @@ module lib_sie_tri_solver_normal
 		
 	subroutine run_normal_tri_calculation()	
 		implicit none
-		
 		if (calc_p(6) .eq. 1) then
 			calculation_step  = 'solver_I' 
 			call lib_sie_tri_solver_normal_I()		
 		else if (calc_p(6) .eq. 2) then
-			calculation_step  = 'solver_II' 
+			calculation_step  = 'solver_II' 			
 			call lib_sie_tri_solver_normal_II()
 		else if (calc_p(6) .eq. 3) then
 			calculation_step  = 'solver_III' 
@@ -82,15 +81,15 @@ module lib_sie_tri_solver_normal
 		n_el = size(struc_tri%elements)
 		m_pairs = size(struc_tri%neighbours)			
 		m_edge = 2*m_pairs !1536
-		print*, 'm_pairs =', m_pairs
-		print*, 'n_el =', n_el
+		print*,'m_pairs =', m_pairs
+		print*,'n_el =', n_el
 		
 		call precalculation_fn(struc_tri)			
 		allocate(D_mat(m_edge, m_edge)) !
 		allocate(b_vec(m_edge))		
 		call get_vector_b_tri(b_vec)		
 	 
-		print*, 'Begin to calculate step-I'
+		print*,'Begin to calculate step-I'
 		call system_clock(test_count_start_sub, test_count_rate_sub)
 		call cpu_time(test_start_sub)		
 		
@@ -189,7 +188,7 @@ module lib_sie_tri_solver_normal
 				write (206, *) 'm_pairs                 ', m_pairs
 			close(206)
 		else if (pre_types%object .eq. 'surface') then
-			
+		
 			open (unit = 206,file = file_out_parameters, action="write", status = 'replace')!!!			
 			
 				write (206, *) 'object_type =                  ', pre_types%object
@@ -259,14 +258,12 @@ module lib_sie_tri_solver_normal
 			print*, 'No matching calculation type!'
 			call exit
 		end if
-		
+				
 		call set_evaluation_parameters_tri()
-		
-		!print*, 'Begin to calculate step-II'
-		
 		call system_clock(test_count_start_sub, test_count_rate_sub)
 		call cpu_time(test_start_sub)
-			
+		
+		print*, 'Begin to calculate step-II'		
 		call lib_sie_tri_observation_field_calculation(b_vec, E_out, H_out)	
 		
 		call cpu_time(test_finish_sub)
@@ -295,15 +292,27 @@ module lib_sie_tri_solver_normal
 		real(dp) :: dx_a, center(3)
 				
 		counter=0 
+		if (allocated(E_out)) then
+			deallocate(E_out)
+		end if
+		if (allocated(H_out)) then
+			deallocate(H_out)
+		end if
+		if (allocated(Energy_scat)) then
+			deallocate(Energy_scat)
+		end if
 		
-		call get_evaluation_points_domain(evaluation_parameter, eps_r1, eps_r2, calc_p, geometry_p, surface_center, r_media)		
+		if (allocated(Energy_scat)) then
+			deallocate(Energy_scat)
+		end if
+		
+		call get_evaluation_points_domain_new(evaluation_parameter, eps_r1, eps_r2, calc_p, geometry_p, surface_center, r_media)		
+		
 		call lib_sie_tri_input_field_calculation(input_field)			
-		Nop = size(input_field)
-				
-		print*, 'Nop=', Nop	
-
-		allocate(E_out(Nop), H_out(Nop), Energy_scat(Nop))
 		
+		Nop = size(input_field)				
+		allocate(E_out(Nop), H_out(Nop), Energy_scat(Nop))
+				
 		if ((pre_types%evaluation .eq. 'BRDF_n' ) .or. (pre_types%evaluation .eq. 'BRDF_p') )then
 			allocate(theta_scatter(evaluation_parameter%N_dim(1)))			
 			dx_a = (evaluation_parameter%dim_a(2) - evaluation_parameter%dim_a(1))/(evaluation_parameter%N_dim(1)-1)
@@ -311,14 +320,14 @@ module lib_sie_tri_solver_normal
 				theta_scatter(mm) = evaluation_parameter%dim_a(1) + dx_a*(mm-1)				
 				!Intensity_GB_surface(m) =  !should be normalized by the incident energy.
 			end do			
-		end if	
-		
+		end if			
 		
 		if ((pre_types%evaluation .eq. 'rcs_p') .or. (pre_types%evaluation .eq. 'rcs_n')) then		
 			!$omp parallel private (mm, sum_aa, Efield_in, Hfield_in, ngp) &  
 			!$omp shared (m_pairs, Nop, counter, E_out, H_out, S_EH, struc_tri, Energy_scat, r_media) 			
 			!$omp do
 			do mm = 1, Nop ! for all r
+				E_out(mm)%vector = (/(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)/)
 				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
 					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
 				end if				
@@ -336,6 +345,7 @@ module lib_sie_tri_solver_normal
 			!$omp shared (m_pairs, Nop, counter, E_out, H_out, S_EH, struc_tri, Energy_scat, r_media) 		
 			!$omp do
 			do mm = 1, Nop ! for all r
+				E_out(mm)%vector = (/(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)/)
 				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
 					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
 				end if				
@@ -356,6 +366,7 @@ module lib_sie_tri_solver_normal
 			!$omp shared (input_field) !, nearfield_D
 			!$omp do
 			do mm = 1, Nop ! for all r
+				E_out(mm)%vector = (/(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)/)
 				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
 					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
 				end if
@@ -373,23 +384,47 @@ module lib_sie_tri_solver_normal
 			!$omp shared (input_field) !
 			!$omp do
 			
-			do mm = 1, Nop ! for all r				
+			do mm = 1, Nop ! for all r	
+				E_out(mm)%vector = (/(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)/)						
 				if (mod(counter, Nop/10).eq. 0 .and. counter .ne. 0)then
 					write (*, "(i5,a1)")int(ceiling(counter*100.0/Nop)),'%'
 				end if				
 			!	
 				if (r_media(mm)%media .eq. 2)then				
-					ngp = r_media(mm)%ngp						
-					call Integration_scattered_field_tri_within_medium(r_media(mm), struc_tri, ngp, S_EH, sum_aa)								
-					E_out(mm)%vector(1:3) = sum_aa(1)%vector
-					H_out(mm)%vector(1:3) = sum_aa(2)%vector						
+					ngp = r_media(mm)%ngp
+				
+					call Integration_scattered_field_tri_within_medium(r_media(mm), struc_tri, ngp, S_EH, sum_aa)
+					if (abs(sum_aa(1)%vector(1)) .lt. 1.0e-20) then
+						sum_aa(1)%vector(1) = (0.0, 0.0)
+						sum_aa(2)%vector(1) = (0.0, 0.0)
+					end if
+					if (abs(sum_aa(1)%vector(2)) .lt. 1.0e-20) then
+						sum_aa(1)%vector(2) = (0.0, 0.0)
+						sum_aa(2)%vector(2) = (0.0, 0.0)
+					end if
+					
+					if (abs(sum_aa(1)%vector(3)) .lt. 1.0e-20) then
+						sum_aa(1)%vector(3) = (0.0, 0.0)
+						sum_aa(2)%vector(3) = (0.0, 0.0)
+					end if
+					
+					E_out(mm)%vector = sum_aa(1)%vector
+					H_out(mm)%vector = sum_aa(2)%vector						
 				else		
 				   ngp = r_media(mm)%ngp
-					call Integration_scattered_field_tri(r_media(mm)%point, struc_tri, ngp, S_EH, sum_aa)		               
+					!if ((abs(abs(r_media(mm)%point(1)) - 1.0e-6) .lt. 1e-15) .and. (abs(abs(r_media(mm)%point(3)) - 1.0e-6) .lt. 1e-15)) then
+					
+					call Integration_scattered_field_tri(r_media(mm)%point, struc_tri, ngp, S_EH, sum_aa)					
+					
 					E_out(mm)%vector = input_field(mm)%e_field%vector*total_field + sum_aa(1)%vector
-					H_out(mm)%vector = input_field(mm)%h_field%vector*total_field + sum_aa(2)%vector					
-				end if
-				counter = counter + 1
+					H_out(mm)%vector = input_field(mm)%h_field%vector*total_field + sum_aa(2)%vector	
+					
+					!print*, 'r_local=', r_media(mm)%point
+					!!print*, 'E_out(mm)%vector=', E_out(mm)%vector
+					!end if
+					
+				end if				
+				counter = counter + 1				
 			end do	
 			!$omp end do
 			!$omp end parallel  		
@@ -401,65 +436,71 @@ module lib_sie_tri_solver_normal
 		if ((pre_types%evaluation .eq. 'rcs_n') .or. (pre_types%evaluation .eq. 'rcs_p') .or. &		
 			(pre_types%evaluation .eq. 'BRDF_p') .or. (pre_types%evaluation .eq. 'BRDF_n'))then
 			
-			open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
+			open (unit = 203, file = file_name_output_Efield, action = "write",status = 'replace')
 				do mm = 1, Nop        
 					write (203, '(1001(E19.12, tr3))') Energy_scat(mm)        
 				end do
 			close(203)
 		else
-			open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
-				do mm = 1, Nop        
-					write (203, '(1001(E19.12, tr3))')  (real(E_out(mm)%vector(n)), n= 1, 3), (imag(E_out(mm)%vector(n)), n= 1, 3) !(real(H_out(m)%vector(n)), n= 1, 3), (imag(H_out(m)%vector(n)), n= 1, 3)  r_media(m)%point(1), r_media(m)%point(3),
-				end do
+			
+			open (unit = 203, file = file_name_output_Efield, action = "write",status = 'replace')
+			do mm = 1, Nop        
+					write (203, '(1001(E19.12, tr3))')  (real(E_out(mm)%vector(n)), n= 1, 3), (imag(E_out(mm)%vector(n)), n= 1, 3), (real(H_out(mm)%vector(n)), n= 1, 3), (imag(H_out(mm)%vector(n)), n= 1, 3)
+					end do
 			close(203)
+					
 		end if
 		
+		if (calc_p(1) .ne. 4)then
+			if (allocated(struc_tri%points))then
+				deallocate(struc_tri%points)
+			end if
 		
+			if (allocated(struc_tri%x_c))then
+				deallocate(struc_tri%x_c)
+			end if
+		
+			if (allocated(struc_tri%midpoint))then
+				deallocate(struc_tri%midpoint)
+			end if	
+		
+			if (allocated(struc_tri%neighbours))then
+				deallocate(struc_tri%neighbours)
+			end if
+				
+			if (allocated(struc_tri%midpoint_edge))then
+				deallocate(struc_tri%midpoint_edge)
+			end if
+				
+			if (allocated(struc_tri%elements))then
+				deallocate(struc_tri%elements)
+			end if				
+		
+			if (allocated(b_vec))then
+				deallocate(b_vec)
+			end if				
+		end if
 		!open (unit = 203, file = 'test_domain.txt', action = "write",status = 'replace')
-		!	do m = 1, Nop        
-		!		write (203, '(1001(E19.12, tr3))') 	real(r_media(m)%eps_r)
+		!	do mm = 1, nop        
+		!		write (203, '(1001(e19.12, tr3))') 	real(r_media(mm)%eps_r)
 		!	end do
 		!close(203)
-		!
-		!!Only input field 
-		!********************************
+		
+		!open (unit = 203, file = 'test_domain.txt', action = "write",status = 'replace')
+		!	do mm = 1, nop        
+		!		write (203, '(1001(e19.12, tr3))') 	(real(input_field(mm)%e_field%vector(n)), n=1,3)
+		!	end do
+		!close(203)
 		
 		!
-		!open (unit = 203, file = file_name_output_II, action = "write",status = 'replace')
+		!!Only input field 
+		!********************************		!
+		!open (unit = 203, file = file_name_output_Efield, action = "write",status = 'replace')
 		!	do m = 1, Nop        
 		!		write (203, '(1001(E19.12, tr3))') 	(real(input_field(m)%e_field%vector(n)), n= 1, 3), &
 		!		(imag(input_field(m)%e_field%vector(n)), n= 1, 3)	
 		!	end do
 		!close(203)
-	
-		
-		if (allocated(struc_tri%points))then
-			deallocate(struc_tri%points)
-		end if
-		
-		if (allocated(struc_tri%x_c))then
-			deallocate(struc_tri%x_c)
-		end if
-		
-		if (allocated(struc_tri%midpoint))then
-			deallocate(struc_tri%midpoint)
-		end if	
-		
-		if (allocated(struc_tri%neighbours))then
-			deallocate(struc_tri%neighbours)
-		end if
-				
-		if (allocated(struc_tri%midpoint_edge))then
-			deallocate(struc_tri%midpoint_edge)
-		end if
-				
-		if (allocated(struc_tri%elements))then
-			deallocate(struc_tri%elements)
-		end if				
-		
-		if (allocated(b_vec))then
-			deallocate(b_vec)
-		end if				
 		
 		return
 	end subroutine

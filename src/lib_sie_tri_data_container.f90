@@ -401,11 +401,13 @@ module lib_sie_tri_data_container
 		end do
 		close(in_unit)	
 		
-		dshift_a = 250.0e-9
-		dshift_b = 50.0e-9
-		shift_a = -1250e-9
-		shift_b = -250.0e-9;
-		m_shift = 11
+		
+		shift_a = -1.05e-6
+		shift_b = -1.0e-6;
+		dshift_a = 50.0e-9
+		dshift_b = 200.0e-9
+		
+		m_shift = 7
 		n_shift = 11
 		allocate(surface_center(m_shift*n_shift, 3))
 		do n = 1, n_shift			

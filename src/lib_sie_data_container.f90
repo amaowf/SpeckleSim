@@ -23,7 +23,7 @@ module lib_sie_data_container
 	
 	!public variables
 	real(dp) :: k0 
-	real(dp) :: Omega			
+	real(dp) :: Omega	
 	complex(dp) :: eps_1, eps_2
 	complex(dp) :: eps_r1, eps_r2, eps_r2_main
 	complex(dp) :: k1, k2
@@ -36,12 +36,14 @@ module lib_sie_data_container
 	character(len = 100) :: File_NodeCoordinates
 	character(len = 100) :: File_Element_NodeIndices	
 	character(100) :: file_name_output_I
-	character(100) :: file_name_output_II
+	character(100) :: file_name_output_Efield
+	character(100) :: file_name_output_Hfield	
 	character (len=100) :: file_out_error
 	character (len=100) :: file_out_parameters
+	character (len=20) :: field_output
 		
 	real(dp) :: theta_start, theta_end, phi_start, phi_end
-	real(dp) :: geometry_p(2)	
+	real(dp) :: geometry_p(3)
 	real(dp) :: surface_center(3)
 	real(dp), dimension(:, :), allocatable :: surface_center_arr
 	real(dp) :: position_c, dim_a_min, dim_a_max, dim_b_min, dim_b_max
@@ -73,6 +75,7 @@ module lib_sie_data_container
 	logical :: precondition_left
 	integer :: max_iterations, restart
 	real(dp) :: convergence_tolerance
+	
 	
 	!Parameters for MLFMM	
 	type(lib_sie_simulation_parameter_type) :: simulation_data

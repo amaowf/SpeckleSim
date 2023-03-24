@@ -147,9 +147,12 @@ module lib_sie_type_function
 	type lib_sie_illumination_parameter
 		real(dp) :: lambda
 		real(dp) :: theta_in
-		real(dp) :: phi_in
+		real(dp) :: phi_in        
+        real(dp) :: phi_max
 		real(dp) :: k_in(3)
 		real(dp) :: E_in(3) !amplitude
+		integer :: Nt ! for conical illumination, sampling points along theta
+		integer :: Np ! for conical illumination, sampling points along phi
 		character(len = 5) :: pol
 	end type lib_sie_illumination_parameter
 	

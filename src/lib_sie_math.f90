@@ -138,7 +138,7 @@ module lib_sie_math
 		type(vector_c), intent(out) :: E_surf
 		
 		!dummy
-		integer :: nm, m, i, j
+		integer :: n_m, m, i, j, n
 		real(dp), dimension(:), allocatable :: jn
 		real(dp) :: n_air, k_in(3), kx, ky, kz, ph, E_in(2) !ph: the pupil function, can be extended		
 		real(dp) :: theta_min, theta_max, phi_min, phi_max, k_rho, x_j, trf(3),  E_tmp(3)
@@ -147,23 +147,32 @@ module lib_sie_math
 		integer :: Nx, Ny
 		
 		complex(dp) :: E_surf_tmp(3), phase_tmp
-		nm = 2
+		real(dp), dimension(:, :), allocatable :: angle_arr
+        
+        real(dp) :: r_local_new(3)
+				
+		
+		n_m = 2
 		m = 2
 		
 		allocate(jn(1:m))
 		
 		n_air = 1.0
-		Nx = 21
-		Ny = Nx
+		
+		Nx = illumination%Nt
+		!Ny = 2*Nx*2-1
+		Ny = illumination%Np
+        
+		
+		allocate(angle_arr(Nx*Ny, 2))
 		
 		!Arbitrary factor to obtain the value of maximum E_field around 1.0
-		factor_m = 8.0	
-		
+		factor_m = 8.0
 		theta_min = 0.0
 		theta_max = asin(p_obj%NA/n_air);
 		
 		phi_min = 0
-		phi_max = -2*PI
+		phi_max = illumination%phi_max
 		
 		if (illumination%k_in(3) .le. 0.0) then
 			factor_lp = -1.0
@@ -175,8 +184,7 @@ module lib_sie_math
 		dphi = (phi_max-phi_min)/(Ny-1)
 		
 		k0 = PI*2/illumination%lambda		
-		if (illumination%pol .eq. 'TM') then		
-			!E_in = illumination%E_in(1:2)
+		if (illumination%pol .eq. 'TM') then			
 			E_in = (/1.0, 0.0/)
 		else if (illumination%pol .eq. 'TE') then
 			E_in = (/0.0, 1.0/)
@@ -185,34 +193,43 @@ module lib_sie_math
 		end if	
 			
 		Ph = 1.0 !for temparory use	
-		E_surf%vector(1:3) = (0.0, 0.0)				
+		E_surf%vector(1:3) = (0.0, 0.0)		
+		
 		do i = 1, Nx !
-			theta = theta_min + dtheta*(i) 
-			do j = 1, Ny-1
+			theta = theta_min + dtheta*(i-1) 			
+			do j = 1, Ny-1			
 			   phi = phi_min + dphi*(j-1)
+				n = j + (i-1)*(Ny-1)
+				angle_arr(n, 1) = theta
+				angle_arr(n, 2) = phi
 				kx = sin(theta)*cos(phi)				
 				ky = sin(theta)*sin(phi)
 				kz = cos(theta)*factor_lp
 				k_in = (/kx, ky, kz/)*k0								
 				k_rho = sqrt(kx**2 + ky**2)*k0
 				x_j = k_rho*p_obj%r_ph/p_obj%M				
-				jn = lib_math_bessel_spherical_first_kind(x_j, 0, nm)				
-							
-				call field_rotation_conical_illumination(theta, phi, E_in, E_tmp)
-			
+				jn = lib_math_bessel_spherical_first_kind(x_j, 0, n_m)
+				call field_rotation_conical_illumination(theta, phi, E_in, E_tmp)			
 				trf = dtheta*dphi*sin(theta)*cos(theta)*E_tmp
 				
 				!check which order should be in jn()
 				filter_ph = 2*PI*p_obj%r_ph/(k_rho*p_obj%M)*jn(1)*Ph
 				
 				!First using no filter function
-				E_surf_tmp = exp(-im*dot_product(k_in, r_local))*k0**2/(4*PI**2)*trf!*filter_ph
-				E_surf%vector = E_surf%vector + E_surf_tmp*factor_m				
-			end do		
+                r_local_new = r_local + (/0.5e-6, 0.0, 0.5e-6/)
+				E_surf_tmp = exp(-im*dot_product(k_in, r_local_new))*k0**2/(4*PI**2)*trf!*filter_ph			
+				E_surf%vector = E_surf%vector + E_surf_tmp			
+			end do
 		end do
+		!open (unit = 203, file = 'conical_theta_phi.txt', action = "write",status = 'replace')
+		!do n = 1, 1!Nx*(Ny-1)
+		!		write (203, '(1001(E19.12, tr3))')  angle_arr(n, 1), angle_arr(n, 2)
+		!end do
+		!		
+		!close(203)
 		deallocate(jn)		
 	end subroutine
-	
+
 	!According to equation (2) and (5) in Pahl, 2021
 	subroutine field_rotation_conical_illumination(theta, phi, Ein_t, E_in)
 		real(dp), intent(in) :: theta, phi
@@ -239,6 +256,42 @@ module lib_sie_math
 	
 	end subroutine
 	
+	subroutine kin_and_Ein_calculation(calc_pp, illumination_pp)
+		type(lib_sie_illumination_parameter), intent(inout) :: illumination_pp
+		integer, intent(in) :: calc_pp(8)
+				
+		!dummy
+		real(dp) :: sign, Ein_p(2), theta_in, phi_in
+		
+		theta_in = illumination_pp%theta_in
+		phi_in = illumination_pp%phi_in
+		!k along the z-axis
+		if (calc_pp(7) .eq. 1) then
+			sign = 1.0
+		elseif (calc_pp(7) .eq. 2) then		
+			sign = -1.0
+				else
+			print*, 'Wrong setting for the k-direction!'
+		end if
+				
+		if (calc_pp(8) .eq. 1)then !TM-polarization
+			illumination_pp%pol = 'TM';
+			Ein_p(1) = 1.0
+			Ein_p(2) = 0.0		
+		else !TE-polarization
+			illumination_pp%pol = 'TE';
+			Ein_p(1) = 0.0
+			Ein_p(2) = 1.0
+		end if
+				
+		illumination_pp%k_in = &
+				(/sin(theta_in)*cos(phi_in), sin(theta_in)*sin(phi_in), sign*cos(theta_in)/)	
+		!print*, 'illumination_pp%k_in = ', illumination_pp%k_in
+		!Illumination via microscope		
+		call field_rotation_conical_illumination(theta_in, phi_in, Ein_p, illumination_pp%E_in)
+		return
+	end subroutine
+	
 	subroutine get_evaluation_points(evaluation_p, r_local, evaluation_type)! 
 		type(point), dimension(:), allocatable, intent(out) :: r_local
 		character(len = 10), intent(in) :: evaluation_type
@@ -260,7 +313,7 @@ module lib_sie_math
 			(evaluation_type .eq. 'BRDF_p') .or. (evaluation_type .eq. 'BRDF_n'))then
 			dx_b = 0.0
 		else
-			dx_b = (evaluation_p%dim_b(2) - evaluation_p%dim_b(1))/(n_b-1)
+			dx_b = (evaluation_p%dim_b(2) - evaluation_p%dim_b(1))/(n_b-1)			
 		end if
 		
 		if (evaluation_type .eq. 'xy')then ! xy-plot		
@@ -305,39 +358,47 @@ module lib_sie_math
 		return		
 	end subroutine get_evaluation_points
 	
-	subroutine get_evaluation_points_domain(evaluation_p, eps_r1, eps_r2, calculation_p, geometry_p, surface_center, r_local)! 		
+	subroutine get_evaluation_points_domain_new(evaluation_p, eps_r1, eps_r2, calculation_p, geometry_p, surface_center, r_local)! 		
 		type(evaluation_r_media), dimension(:), allocatable, intent(out) :: r_local
 		complex(dp), intent(in) :: eps_r1, eps_r2
 		integer, intent(in):: calculation_p(8)
 		type(lib_sie_evaluation_parameter_type), intent(in) :: evaluation_p
-		real(dp), dimension(:), intent(in) :: geometry_p(2)
+		real(dp), dimension(:), intent(in) :: geometry_p(3)
 		real(dp), intent(in) :: surface_center(3)
 
 		!dummy
 		real(dp ) :: dx_a, dx_b, ra(3)
-		real(dp) :: phi, theta, wg, hg, dummy, y
-		integer :: i, j, n_a, n_b, n_rs
-		real(dp), dimension(:), allocatable :: xx, ff
+		real(dp) :: phi, theta, wg, hg, dummy, y 
+		integer :: i, j, n_a, n_b, n_rs, mm
+		real(dp), dimension(:), allocatable :: xx, ff, arr_a, arr_b
 		
 		n_a = evaluation_p%N_dim(1)
 		n_b = evaluation_p%N_dim(2)
-
-		allocate(r_local(n_a*n_b))
-		r_local%eps_r = eps_r1
-		r_local%media = 1
+		
+		allocate(r_local(n_a*n_b), arr_a(n_a), arr_b(n_b))
+		r_local(1:n_a*n_b)%eps_r = eps_r1
+		r_local(1:n_a*n_b)%media = 1
+		
 		dx_a = (evaluation_p%dim_a(2) - evaluation_p%dim_a(1))/(n_a-1)
+		do i = 1, n_a			
+			arr_a(i) = evaluation_p%dim_a(1) + dx_a*(i-1)
+		end do		
 		
 		if ((calculation_p(4) .ge. 4) .and. (calculation_p(4) .le. 7))then
 			dx_b = 0.0
 		else
 			dx_b = (evaluation_p%dim_b(2) - evaluation_p%dim_b(1))/(n_b-1)
+			do i = 1, n_b			
+				arr_b(i) = evaluation_p%dim_b(1) + dx_b*(i-1)
+			end do		
 		end if
+		!
 		
 		if (calculation_p(4) .eq. 2)then ! xy-plot		
 			do i = 1, n_b
 				do j = 1, n_a
-					r_local((i-1)*n_a+j)%point= &
-					(/evaluation_p%dim_a(2) - dx_a*(j-1), evaluation_p%dim_b(2) - dx_b*(i-1), evaluation_p%dim_c/)
+					mm = (i-1)*n_a+j
+					r_local(mm)%point= (/arr_a(j), arr_b(i), evaluation_p%dim_c/)
 				end do
 			end do
 		else if (calculation_p(4) .eq. 3)then ! yz-plot   ! rough surface was not included because it is not necessary.    
@@ -346,37 +407,36 @@ module lib_sie_math
 			if (calculation_p(5) .eq. 5)then !cylinder				
 				do i=1, n_b
 					do j=1, n_a
-						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_c, evaluation_p%dim_a(1) + dx_a*(j-1), &
-						evaluation_p%dim_b(1) + dx_b*(i-1)/)
-						ra = r_local((i-1)*n_a+j)%point - surface_center
-						!print*, 'surface_center', surface_center
-						!print*, 'geometry_p(1)=', geometry_p(1)
+						mm = (i-1)*n_a+j
+						r_local(mm)%point(1:3)=(/evaluation_p%dim_c, arr_a(j), arr_b(i)/)
+						ra = r_local(mm)%point - surface_center
+					
 						if (abs(ra(3)) .le. geometry_p(1)) then
-							r_local((i-1)*n_a+j)%eps_r = eps_r2
-							r_local((i-1)*n_a+j)%media = 2
+							r_local(mm)%eps_r = eps_r2
+							r_local(mm)%media = 2
 						else 						
-							r_local((i-1)*n_a+j)%eps_r = eps_r1
-							r_local((i-1)*n_a+j)%media = 1						
+							r_local(mm)%eps_r = eps_r1
+							r_local(mm)%media = 1						
 						end if
 					end do
 				end do
 			else if ((calculation_p(5) .eq. 1) .or. (calculation_p(5) .eq. 4)) then		!sphere	
 				do i=1, n_b
 					do j=1, n_a
-						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_c, evaluation_p%dim_a(1) + dx_a*(j-1), &
-						evaluation_p%dim_b(1) + dx_b*(i-1)/)
-						ra = r_local((i-1)*n_a+j)%point! - surface_center !attention: surface center at 0.0 is assumed. 
+						mm = (i-1)*n_a+j
+						r_local(mm)%point(1:3)=(/evaluation_p%dim_c, arr_a(j), arr_b(i)/)
+						ra = r_local(mm)%point! - surface_center !attention: surface center at 0.0 is assumed. 
 						if (norm2(ra) .le. geometry_p(1)) then
-							r_local((i-1)*n_a+j)%eps_r = eps_r2
-							r_local((i-1)*n_a+j)%media = 2
+							r_local(mm)%eps_r = eps_r2
+							r_local(mm)%media = 2
 						end if
 					end do
 				end do
 			else 		
 				do i=1, n_b
 					do j=1, n_a
-						r_local((i-1)*n_a + j)%point=(/evaluation_p%dim_c, evaluation_p%dim_a(2) - dx_a*(j-1), &
-						evaluation_p%dim_b(2) - dx_b*(i-1) /)
+						mm = (i-1)*n_a+j					
+						r_local(mm)%point=(/evaluation_p%dim_c, arr_a(j), arr_b(i)/)
 					end do
 				end do
 			end if
@@ -387,46 +447,65 @@ module lib_sie_math
 				hg = geometry_p(2)		
 				do i=1, n_b
 					do j=1, n_a
-						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_a(1) + dx_a*(j-1), evaluation_p%dim_c, &
-						evaluation_p%dim_b(1) + dx_b*(i-1)/)
-						ra = r_local((i-1)*n_a+j)%point - surface_center
-						!print*, 'surface_center', surface_center
+						mm = (i-1)*n_a+j					
+						r_local(mm)%point=(/arr_a(j), evaluation_p%dim_c, arr_b(i)/)
+						ra = r_local(mm)%point - surface_center
+						
 						if ((abs(ra(1)) .le. wg/2) .and. (ra(3) .le. 0.0)) then
-							r_local((i-1)*n_a+j)%eps_r = eps_r2
-							r_local((i-1)*n_a+j)%media = 2							
+							r_local(mm)%eps_r = eps_r2
+							r_local(mm)%media = 2							
 						elseif ((abs(ra(1)) .ge. wg/2) .and. (ra(3) .le. -hg)) then
-							r_local((i-1)*n_a+j)%eps_r = eps_r2		
-							r_local((i-1)*n_a+j)%media = 2
+							r_local(mm)%eps_r = eps_r2		
+							r_local(mm)%media = 2
 						end if
 					end do
 				end do
 			else if ((calculation_p(5) .eq. 1) .or. (calculation_p(5) .eq. 4)) then		!sphere	
 				do i=1, n_b
 					do j=1, n_a
-						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_a(1) + dx_a*(j-1), evaluation_p%dim_c, &
-						evaluation_p%dim_b(1) + dx_b*(i-1)/)
-						ra = r_local((i-1)*n_a+j)%point! - surface_center !attention: surface center at 0.0 is assumed. 
+						mm = (i-1)*n_a+j					
+						r_local(mm)%point=(/arr_a(j), evaluation_p%dim_c, arr_b(i)/)
+						ra = r_local(mm)%point! - surface_center !attention: surface center at 0.0 is assumed. 
 						if (norm2(ra) .le. geometry_p(1)) then 
-							r_local((i-1)*n_a+j)%eps_r = eps_r2
-							r_local((i-1)*n_a+j)%media = 2
+							r_local(mm)%eps_r = eps_r2
+							r_local(mm)%media = 2
 						end if
 					end do
 				end do
 			else if (calculation_p(5) .eq. 5)then !cylinder
 				do i=1, n_b
 					do j=1, n_a						
-						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_a(1) + dx_a*(j-1), evaluation_p%dim_c, &
-						evaluation_p%dim_b(1) + dx_b*(i-1)/)
-						ra = r_local((i-1)*n_a+j)%point! - !attention: surface center at 0.0 is assumed. 						
+						mm = (i-1)*n_a+j					
+						r_local(mm)%point=(/arr_a(j), evaluation_p%dim_c, arr_b(i)/)
+						ra = r_local(mm)%point!! - !attention: surface center at 0.0 is assumed. 						
 						if (sqrt(ra(1)**2+ra(3)**2) .le. geometry_p(1)) then 
-							r_local((i-1)*n_a+j)%eps_r = eps_r2
-							r_local((i-1)*n_a+j)%media = 2						
+							r_local(mm)%eps_r = eps_r2
+							r_local(mm)%media = 2						
 						else							
-							r_local((i-1)*n_a+j)%eps_r = eps_r1
-							r_local((i-1)*n_a+j)%media = 1
+							r_local(mm)%eps_r = eps_r1
+							r_local(mm)%media = 1
 						end if
 					end do
 				end do
+			else if (calculation_p(5) .eq. 6)then !corrugated grating meshed by COMSOL				
+				wg = geometry_p(1) !grating periodicity
+				hg = geometry_p(2) !peak to valley amplitude. 
+				
+				do i=1, n_b
+					do j=1, n_a
+						mm = (i-1)*n_a+j					
+						r_local(mm)%point=(/arr_a(j), evaluation_p%dim_c, arr_b(i)/)
+						ra = r_local(mm)%point - surface_center
+						dummy = hg/2*cos(ra(1)*2*pi/wg)
+						if ((abs(ra(1)) .le. geometry_p(3)/2) .and. (ra(3) .le. dummy)) then
+							r_local(mm)%eps_r = eps_r2
+							r_local(mm)%media = 2							
+						else
+							r_local(mm)%eps_r = eps_r1		
+							r_local(mm)%media = 1
+						end if
+					end do
+				end do				
 			else if (calculation_p(5) .eq. 2)then		!rough surface		
 				!The file 'f_boundary_rs.dat' is generated simultaneously when the rough surface is generated
 				open(unit = 115, file = 'f_boundary_rs.dat', status = 'old', action = 'read')
@@ -434,14 +513,14 @@ module lib_sie_math
 				do i = 1, n_a
 					read(115, *) dummy, f_boundary_rs(i) 
 				end do
-				do j=1, n_a !the size of the surface is equal to the surface lengtgh, in x-direction
-					do i=1, n_b !z-direction
-						r_local((i-1)*n_a+j)%point(1:3)=(/evaluation_p%dim_a(1) + dx_a*(j-1), evaluation_p%dim_c, &
-						evaluation_p%dim_b(1) + dx_b*(i-1)/)
-						ra = r_local((i-1)*n_a+j)%point					
+				do i=1, n_b !the size of the surface is equal to the surface lengtgh, in x-direction
+					do j=1, n_a !z-direction
+						mm = (i-1)*n_a+j
+						r_local(mm)%point(1:3)=(/arr_a(j), evaluation_p%dim_c, arr_b(i)/)
+						ra = r_local(mm)%point					
 						if (ra(3) .ge. f_boundary_rs(j)) then						
-							r_local((i-1)*n_a+j)%eps_r = eps_r2
-							r_local((i-1)*n_a+j)%media = 2							
+							r_local(mm)%eps_r = eps_r2
+							r_local(mm)%media = 2							
 						end if
 					end do
 				end do			
@@ -466,7 +545,7 @@ module lib_sie_math
 			end do	
 		end if			
 		return		
-	end subroutine get_evaluation_points_domain
+	end subroutine get_evaluation_points_domain_new
 	
 	function cross_r(v1,v2)!result(rv)
 		! Function returning the cross product of

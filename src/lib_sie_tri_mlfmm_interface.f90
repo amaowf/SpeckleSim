@@ -80,7 +80,7 @@ module lib_sie_tri_mlfmm_interface
 			data_elements%xy(m)%hierarchy = HIERARCHY_XY
 		end do
 		
-		call lib_sie_destructor_tri()
+		call lib_sie_destructor_tri()		
 		call lib_sie_constructor_tri(data_elements, tree_s_opt)
 		call Truncation_number_calculation()
 		call precalculation_element_coefficient_tri()	
@@ -167,7 +167,7 @@ module lib_sie_tri_mlfmm_interface
 		complex(dp), dimension(:), allocatable :: vector_b
 		
 		!dummy
-		!integer :: i
+		integer :: i
 		
 		if (allocated(vector_b)) then
 			deallocate(vector_b)
@@ -202,6 +202,10 @@ module lib_sie_tri_mlfmm_interface
 		logical :: x_initial_file
 		integer :: dummy_number, m
 		real(dp) :: x_initial_re, x_initial_im
+		
+		if (allocated(vector_x)) then
+			deallocate(vector_x)
+		end if		
 		
 		allocate(vector_x(2*m_pairs), vector_x_PMCHWT(2*m_pairs), vector_x_MCTF(2*m_pairs))
 		allocate(vector_b(2*m_pairs))		
@@ -258,11 +262,16 @@ module lib_sie_tri_mlfmm_interface
 	
 	subroutine lib_sie_ml_fmm_get_vector_b_tri(vector_b)
 		implicit none
-      
-		! dummy
+   	! dummy
 		double complex, dimension(:), allocatable, intent(inout) :: vector_b		
+		
+		if (allocated(vector_b)) then
+			deallocate(vector_b)
+		end if		
+		allocate(vector_b(2*m_pairs)) 
+	
 		!integer :: i
-		call get_vector_b_tri(vector_b)	
+		call get_vector_b_tri(vector_b)			
 		
 	end subroutine lib_sie_ml_fmm_get_vector_b_tri !	
 	
@@ -284,7 +293,8 @@ module lib_sie_tri_mlfmm_interface
 
       type(lib_ml_fmm_v), dimension(:), allocatable :: b
       type(lib_ml_fmm_v), dimension(:), allocatable :: x
-        
+      
+			
       allocate(x(m_pairs)) 
 		  
       do i = 1, m_pairs
@@ -293,8 +303,7 @@ module lib_sie_tri_mlfmm_interface
          x(i)%C(2)=vector_x(i + m_pairs)
       end do
         
-      call lib_ml_fmm_run(x, b)
-		
+      call lib_ml_fmm_run(x, b)		
 		!save vector_b for the next run
       do i = 1, m_pairs        
          vector_b(i) = b(i)%C(1)
