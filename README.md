@@ -4,3 +4,7 @@ To treat the lower and higher order sigularity problem, the methods in this pape
 
 GMRES was used to solve the linear equation and the fortran code was taken from: A set of Flexible-GMRES routines for real and complex arithmetics (https://www.cerfacs.fr/algor/reports/1998/TR_PA_98_20.pdf)
 
+For the data structure in MLFMM, the method in the following paper was implemented by Max Daiber-Rupert: Data Structures, Optimal Choice of Parameters, and Complexity Results for Generalized Multilevel Fast Multipole Mehthods in d Dimensions (https://users.umiacs.umd.edu/~ramani/pubs/umiacs-tr-2003-28.pdf)
+
+
+
